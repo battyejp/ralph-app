@@ -8,3 +8,9 @@ progress.txt
 
 # OS files
 .DS_Store
+
+**/bin/
+**/obj/
+.idea/.idea.Ipf.ODL/.idea/encodings.xml
+.idea/
+.vs/
