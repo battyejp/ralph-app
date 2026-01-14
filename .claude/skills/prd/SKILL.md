@@ -164,6 +164,7 @@ Add priority levels to tasks so users can focus on what matters most. Tasks can 
 - [ ] Add priority column to tasks table: 'high' | 'medium' | 'low' (default 'medium')
 - [ ] Generate and run migration successfully
 - [ ] Code builds successfully
+- [ ] Tests pass with greater than 80% code coverage 
 
 ### US-002: Display priority indicator on task cards
 **Description:** As a user, I want to see task priority at a glance so I know what needs attention first.
@@ -172,7 +173,7 @@ Add priority levels to tasks so users can focus on what matters most. Tasks can 
 - [ ] Each task card shows colored priority badge (red=high, yellow=medium, gray=low)
 - [ ] Priority visible without hovering or clicking
 - [ ] Code builds successfully
-- [ ] Verify in browser using dev-browser skill
+- [ ] Tests pass with greater than 80% code coverage 
 
 ### US-003: Add priority selector to task edit
 **Description:** As a user, I want to change a task's priority when editing it.
@@ -182,7 +183,7 @@ Add priority levels to tasks so users can focus on what matters most. Tasks can 
 - [ ] Shows current priority as selected
 - [ ] Saves immediately on selection change
 - [ ] Code builds successfully
-- [ ] Verify in browser using dev-browser skill
+- [ ] Tests pass with greater than 80% code coverage 
 
 ### US-004: Filter tasks by priority
 **Description:** As a user, I want to filter the task list to see only high-priority items when I'm focused.
@@ -192,7 +193,7 @@ Add priority levels to tasks so users can focus on what matters most. Tasks can 
 - [ ] Filter persists in URL params
 - [ ] Empty state message when no tasks match filter
 - [ ] Code builds successfully
-- [ ] Verify in browser using dev-browser skill
+- [ ] Tests pass with greater than 80% code coverage 
 
 ## Functional Requirements
 
