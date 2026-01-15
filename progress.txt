@@ -125,3 +125,30 @@ Files changed:
 - Moq's Setup allows matching specific parameter values to test different scenarios
 - AutoMapper can map IEnumerable<Customer> to IEnumerable<CustomerResponseDto> directly
 ---
+## 01/15/2026 14:42 - US-007
+Thread: https://ampcode.com/threads/$AMP_CURRENT_THREAD_ID
+- Implemented filtering and search functionality for GET /api/customers endpoint
+- Added 'search' query parameter for case-insensitive search across Name and Email fields
+- Added 'email' query parameter for exact match filtering on Email field
+- Filters combine with AND logic when both provided (repository applies both WHERE clauses)
+- Filtering works correctly with pagination - totalCount reflects filtered results
+- 9 comprehensive unit tests added covering all filtering scenarios
+- All 112 tests passing with 100% coverage on relevant classes
+
+Files changed:
+- CustomerApi/Repositories/ICustomerRepository.cs (added emailFilter parameter to GetAllAsync)
+- CustomerApi/Repositories/CustomerRepository.cs (implemented email exact match filter with WHERE clause)
+- CustomerApi/Controllers/CustomersController.cs (added search and email query parameters to GetCustomers)
+- CustomerApi.Tests/Controllers/CustomersControllerTests.cs (added 9 filtering tests, updated existing tests)
+
+**Learnings for future iterations:**
+- When adding parameters to repository methods, update both interface and implementation signatures
+- The repository already had searchTerm parameter but not emailFilter - added alongside existing parameters
+- Email filter uses exact match (Email == emailFilter), search uses case-insensitive contains (Name.ToLower().Contains() || Email.ToLower().Contains())
+- Controller passes parameters directly to repository - no additional logic needed in controller
+- When updating repository signatures, all existing test mocks need to be updated with new parameter (changed from 5 to 6 parameters)
+- Use replace_all=true in Edit tool for repeated test signature updates across the file
+- Filter tests verify both the response data AND that correct parameters were passed to repository (using Moq Verify)
+- Empty string filters are passed as-is to repository which handles the whitespace check
+---
+
