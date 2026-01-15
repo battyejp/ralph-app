@@ -182,3 +182,42 @@ Thread: https://ampcode.com/threads/$AMP_CURRENT_THREAD_ID
 - Next.js 14 'use client' directive required for components with useState
 ---
 
+## 2026-01-15 20:00 - US-007
+Thread: https://ampcode.com/threads/$AMP_CURRENT_THREAD_ID
+- Implemented Display Search Results Table feature
+- Created CustomerResultsTable component with all required states:
+  - Loading state with animated spinner
+  - Empty state with helpful user message
+  - Error state with user-friendly error display
+  - Success state with data table and mobile cards
+- Built shadcn/ui Table component for desktop view
+- Implemented responsive design with card view for mobile (md: breakpoint)
+- Integrated results table into home page with API calls
+- Connected to customerApi service with proper error handling
+- All 72 tests passing with 97.05% statement coverage, 97.14% branch coverage
+- Build verified successfully
+- Browser verification completed - UI renders correctly
+
+**Files Created:**
+- src/frontend/src/components/ui/table.tsx (shadcn/ui Table component with all subcomponents)
+- src/frontend/src/components/CustomerResultsTable.tsx (Main results table component)
+- src/frontend/src/components/CustomerResultsTable.test.tsx (Comprehensive test suite with 72 tests)
+
+**Files Modified:**
+- src/frontend/src/app/page.tsx (Integrated CustomerResultsTable with API calls and state management)
+
+**Learnings for future iterations:**
+- CustomerResultsTable renders both desktop table and mobile cards simultaneously (both hidden/shown via Tailwind classes)
+- When testing components with duplicate content for responsive views, use getAllByText() instead of getByText()
+- Table component uses shadcn/ui styling with Tailwind classes: hidden md:block for desktop, md:hidden for mobile
+- Mobile card view uses grid layout with border, rounded corners, and hover effects
+- Date formatting uses toLocaleDateString() with en-US locale for consistency
+- Customer rows are clickable and trigger onCustomerClick callback (prepared for US-010 details modal)
+- Empty state includes search icon and helpful message about adjusting filters
+- Error state includes warning icon and displays the error message from ApiError
+- Loading state shows centered spinner with descriptive text
+- Results only show after hasSearched is true (prevents showing empty state on page load)
+- ESLint requires HTML entities for apostrophes in JSX (use &apos; instead of ')
+- Component successfully handles all state precedence: loading > error > empty > success
+---
+
