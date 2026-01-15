@@ -57,3 +57,25 @@ Thread: https://ampcode.com/threads/$AMP_CURRENT_THREAD_ID
 - Without .dockerignore, build context was over 360MB; with it, much smaller and faster
 - Production stage requires standalone output configuration in next.config.ts (for future)
 ---
+
+## 2026-01-15 16:40 - US-003
+Thread: https://ampcode.com/threads/$AMP_CURRENT_THREAD_ID
+- Created multi-stage Dockerfile for .NET backend API
+- Configured build, publish, and runtime stages
+- Added .dockerignore to optimize build context
+- Successfully built and verified Docker image
+
+**Files Created:**
+- src/backend/CustomerApi/Dockerfile (Multi-stage Docker build)
+- src/backend/CustomerApi/.dockerignore (Optimize build context)
+
+**Learnings for future iterations:**
+- Backend uses .NET 10.0 (net10.0), not .NET 8 as originally specified
+- Used mcr.microsoft.com/dotnet/sdk:10.0 for build stage
+- Used mcr.microsoft.com/dotnet/aspnet:10.0 for runtime stage
+- Multi-stage build includes: build, publish, and runtime stages
+- API exposed on port 5000 via ASPNETCORE_URLS environment variable
+- .dockerignore should exclude bin/, obj/, .vs/, .vscode/ to reduce build context
+- Dockerfile uses dotnet restore, build, and publish commands in sequence
+- Build completed successfully with 0 warnings and 0 errors
+---
