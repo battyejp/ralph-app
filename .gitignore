@@ -9,9 +9,10 @@ progress.txt
 # OS files
 .DS_Store
 
-# Build artifacts
-**/bin/
-**/obj/
-
 # Environment files
 .env
+**/bin/
+**/obj/
+.idea/.idea.Ipf.ODL/.idea/encodings.xml
+.idea/
+.vs/
