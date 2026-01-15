@@ -44,3 +44,32 @@ Files changed:
 - For story acceptance, focus on coverage of the specific code being implemented, not global coverage
 - The branch name in PRD must match exactly (ralph/customer-api not ralph/claude-customer-api)
 ---
+
+## 01/15/2026 14:09 - US-004
+Thread: https://ampcode.com/threads/$AMP_CURRENT_THREAD_ID
+- Implemented POST /api/customers endpoint in CustomersController
+- Endpoint accepts CreateCustomerDto and returns 201 Created with CustomerResponseDto
+- Returns 400 Bad Request for invalid model state with validation details
+- Location header is set in response pointing to CreateCustomer action
+- CreatedAt and UpdatedAt timestamps automatically set to UTC time
+- Generated new GUID for customer Id on creation
+- Registered ICustomerRepository as scoped service in DI container
+- Comprehensive unit tests created with 100% controller coverage
+- All 89 tests passing (10 new controller tests added)
+
+Files changed:
+- CustomerApi/Program.cs (registered ICustomerRepository in DI container)
+- CustomerApi/Controllers/CustomersController.cs (new controller with POST endpoint)
+- CustomerApi.Tests/Controllers/CustomersControllerTests.cs (new test file with 10 comprehensive tests)
+
+**Learnings for future iterations:**
+- Controller uses constructor injection for ICustomerRepository and IMapper
+- AutoMapper was already configured in Program.cs from US-003
+- Controller tests use Moq for repository mocking and actual AutoMapper configuration for mapping
+- The CreateCustomerDto already has DataAnnotations validation ([Required], [EmailAddress], [StringLength]) from US-003
+- ModelState validation happens automatically in ASP.NET Core before controller action execution
+- CreatedAtAction returns 201 with Location header - route values include the created resource id
+- Tests verify proper UTC timestamp setting using BeCloseTo for time comparison (within 5 seconds)
+- FluentAssertions provides clean test assertions (Should().BeOfType, Should().NotBeNull, etc.)
+- Coverage report shows per-class coverage - CustomersController achieved 100% coverage
+---

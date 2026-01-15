@@ -1,55 +1,73 @@
 {
-  "project": "CustomerAPI",
-  "branchName": "ralph/claude-customer-api",
-  "description": "Customer API - .NET 10 Web API with CRUD operations for Customer entity using MySQL in Docker and Entity Framework Core",
-  "userStories": [
-    {
-      "id": "US-001",
-      "title": "Project setup with .NET 10 and Docker MySQL",
-      "description": "As a developer, I need a properly configured .NET 10 Web API project with Entity Framework Core and MySQL running in Docker so that I have a foundation to build upon.",
-      "acceptanceCriteria": [
-        "Create new .NET 10 Web API project",
-        "Add Entity Framework Core packages for MySQL (Pomelo.EntityFrameworkCore.MySql)",
-        "Configure DbContext with MySQL connection string from environment variables",
-        "Add docker-compose.yml with MySQL 8.0 container exposing port 3306",
-        "Add .env.example with required environment variables (MYSQL_ROOT_PASSWORD, MYSQL_DATABASE, ConnectionStrings__DefaultConnection)",
-        "Code builds successfully",
-        "Application starts without errors when MySQL container is running"
-      ],
-      "priority": 1,
-      "passes": true,
-      "notes": ""
-    },
-    {
-      "id": "US-002",
-      "title": "Create Customer entity and initial migration",
-      "description": "As a developer, I need the Customer entity defined with proper database mapping so that customer data can be persisted.",
-      "acceptanceCriteria": [
-        "Create Customer entity with fields: Id (GUID, auto-generated), Name (required, max 100 chars), Email (required, max 255 chars), Phone (optional, max 20 chars), Address (optional, max 500 chars), CreatedAt (UTC datetime), UpdatedAt (UTC datetime)",
-        "Configure entity with Fluent API or data annotations for constraints",
-        "Create initial EF Core migration",
-        "Migration applies successfully to MySQL database",
-        "Code builds successfully",
-        "Tests pass with greater than 80% code coverage"
-      ],
-      "priority": 2,
-      "passes": true,
-      "notes": ""
-    },
-    {
-      "id": "US-003",
-      "title": "Create Customer DTOs and AutoMapper configuration",
-      "description": "As a developer, I need DTOs to separate API contracts from entity models so that the API has clean request/response models.",
-      "acceptanceCriteria": [
-        "Create CreateCustomerDto with fields: Name (required), Email (required, email format validation), Phone (optional), Address (optional)",
-        "Create UpdateCustomerDto with same fields as CreateCustomerDto",
-        "Create CustomerResponseDto with all Customer fields including Id, CreatedAt, UpdatedAt",
-        "Configure AutoMapper profiles for entity-to-DTO mapping",
-        "Code builds successfully",
-        "Tests pass with greater than 80% code coverage"
-      ],
-      "priority": 3,
-      "passes": true,
-      "notes": ""
-    }
-  }
+    "project": "CustomerAPI",
+    "branchName": "ralph/claude-customer-api",
+    "description": "Customer API - .NET 10 Web API with CRUD operations for Customer entity using MySQL in Docker and Entity Framework Core",
+    "userStories": [
+        {
+            "id": "US-001",
+            "title": "Project setup with .NET 10 and Docker MySQL",
+            "description": "As a developer, I need a properly configured .NET 10 Web API project with Entity Framework Core and MySQL running in Docker so that I have a foundation to build upon.",
+            "acceptanceCriteria": [
+                "Create new .NET 10 Web API project",
+                "Add Entity Framework Core packages for MySQL (Pomelo.EntityFrameworkCore.MySql)",
+                "Configure DbContext with MySQL connection string from environment variables",
+                "Add docker-compose.yml with MySQL 8.0 container exposing port 3306",
+                "Add .env.example with required environment variables (MYSQL_ROOT_PASSWORD, MYSQL_DATABASE, ConnectionStrings__DefaultConnection)",
+                "Code builds successfully",
+                "Application starts without errors when MySQL container is running"
+            ],
+            "priority": 1,
+            "passes": true,
+            "notes": ""
+        },
+        {
+            "id": "US-002",
+            "title": "Create Customer entity and initial migration",
+            "description": "As a developer, I need the Customer entity defined with proper database mapping so that customer data can be persisted.",
+            "acceptanceCriteria": [
+                "Create Customer entity with fields: Id (GUID, auto-generated), Name (required, max 100 chars), Email (required, max 255 chars), Phone (optional, max 20 chars), Address (optional, max 500 chars), CreatedAt (UTC datetime), UpdatedAt (UTC datetime)",
+                "Configure entity with Fluent API or data annotations for constraints",
+                "Create initial EF Core migration",
+                "Migration applies successfully to MySQL database",
+                "Code builds successfully",
+                "Tests pass with greater than 80% code coverage"
+            ],
+            "priority": 2,
+            "passes": true,
+            "notes": ""
+        },
+        {
+            "id": "US-003",
+            "title": "Create Customer DTOs and AutoMapper configuration",
+            "description": "As a developer, I need DTOs to separate API contracts from entity models so that the API has clean request/response models.",
+            "acceptanceCriteria": [
+                "Create CreateCustomerDto with fields: Name (required), Email (required, email format validation), Phone (optional), Address (optional)",
+                "Create UpdateCustomerDto with same fields as CreateCustomerDto",
+                "Create CustomerResponseDto with all Customer fields including Id, CreatedAt, UpdatedAt",
+                "Configure AutoMapper profiles for entity-to-DTO mapping",
+                "Code builds successfully",
+                "Tests pass with greater than 80% code coverage"
+            ],
+            "priority": 3,
+            "passes": true,
+            "notes": ""
+        },
+        {
+            "id": "US-004",
+            "title": "Implement POST create customer endpoint",
+            "description": "As an API consumer, I want to create a new customer so that I can add customers to the system.",
+            "acceptanceCriteria": [
+                "POST /api/customers endpoint accepts CreateCustomerDto in request body",
+                "Returns 201 Created with Location header and created customer (including generated Id and timestamps)",
+                "Returns 400 Bad Request for invalid data with validation error details",
+                "Email field is validated for proper email format",
+                "CreatedAt and UpdatedAt are automatically set to current UTC time",
+                "Code builds successfully",
+                "Tests pass with greater than 80% code coverage"
+            ],
+            "priority": 4,
+            "passes": true,
+            "notes": ""
+        }
+    ]
+}
