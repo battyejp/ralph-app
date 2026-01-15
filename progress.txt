@@ -152,3 +152,36 @@ Files changed:
 - Empty string filters are passed as-is to repository which handles the whitespace check
 ---
 
+## 01/15/2026 14:50 - US-008
+Thread: https://ampcode.com/threads/$AMP_CURRENT_THREAD_ID
+- Implemented sorting functionality for GET /api/customers endpoint
+- Added sortBy query parameter supporting: name, email, createdAt
+- Added sortOrder query parameter supporting: asc, desc
+- Default sort is CreatedAt descending (newest first) when no parameters provided
+- Sorting implemented in repository using switch expression with OrderBy/OrderByDescending
+- Invalid sortBy values default to CreatedAt descending
+- Sorting works correctly with pagination and filtering
+- 9 comprehensive unit tests added covering all sorting scenarios
+- Updated existing repository test to explicitly specify sort parameters
+- All 121 tests passing with 100% coverage on relevant classes
+
+Files changed:
+- CustomerApi/Repositories/ICustomerRepository.cs (added sortBy and sortOrder parameters to GetAllAsync)
+- CustomerApi/Repositories/CustomerRepository.cs (implemented sorting logic with switch expression)
+- CustomerApi/Controllers/CustomersController.cs (added sortBy and sortOrder parameters to GetCustomers)
+- CustomerApi.Tests/Controllers/CustomersControllerTests.cs (added 9 sorting tests, updated all GetAllAsync mocks)
+- CustomerApi.Tests/Repositories/CustomerRepositoryTests.cs (updated GetAllAsync_ResultsOrderedByName test)
+
+**Learnings for future iterations:**
+- Repository sorting uses switch expression for clean conditional OrderBy/OrderByDescending logic
+- Default sorting behavior: when no sortBy/sortOrder specified, defaults to CreatedAt descending (newest first)
+- When sortBy specified without sortOrder, defaults to ascending (except CreatedAt defaults to descending when no params)
+- The isDescending logic: `sortOrder?.ToLower() == "desc" || (string.IsNullOrWhiteSpace(sortBy) && string.IsNullOrWhiteSpace(sortOrder))`
+- When adding parameters to repository methods, ALL test mocks must be updated with correct parameter count
+- Use replace_all=true in Edit tool for systematic updates across test files
+- Test failures with Moq provide "Performed invocations" output showing actual parameters called - very useful for debugging
+- Sort parameters are case-insensitive (converted with ToLower() in repository)
+- Invalid sortBy values gracefully default to CreatedAt descending rather than throwing errors
+- Sorting combines correctly with existing pagination and filtering - no conflicts
+---
+

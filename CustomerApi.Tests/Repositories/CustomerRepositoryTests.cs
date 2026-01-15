@@ -188,7 +188,7 @@ public class CustomerRepositoryTests
         await context.SaveChangesAsync();
         var repository = new CustomerRepository(context);
 
-        var (items, _) = await repository.GetAllAsync(0, 10);
+        var (items, _) = await repository.GetAllAsync(0, 10, null, null, null, null, "name", "asc");
 
         var customerList = items.ToList();
         customerList[0].Name.Should().Be("Alpha Corp");

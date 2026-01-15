@@ -12,7 +12,9 @@ public interface ICustomerRepository
         string? searchTerm = null,
         string? emailFilter = null,
         DateTime? dateFrom = null,
-        DateTime? dateTo = null);
+        DateTime? dateTo = null,
+        string? sortBy = null,
+        string? sortOrder = null);
     Task<Customer> CreateAsync(Customer customer);
     Task<Customer> UpdateAsync(Customer customer);
     Task DeleteAsync(Customer customer);

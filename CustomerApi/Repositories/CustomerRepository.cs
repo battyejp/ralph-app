@@ -31,7 +31,9 @@ public class CustomerRepository : ICustomerRepository
         string? searchTerm = null,
         string? emailFilter = null,
         DateTime? dateFrom = null,
-        DateTime? dateTo = null)
+        DateTime? dateTo = null,
+        string? sortBy = null,
+        string? sortOrder = null)
     {
         var query = _context.Customers.Where(c => !c.IsDeleted);
 
@@ -63,8 +65,19 @@ public class CustomerRepository : ICustomerRepository
 
         var totalCount = await query.CountAsync();
 
+        // Apply sorting - default is CreatedAt descending (newest first)
+        var sortField = sortBy?.ToLower() ?? "createdat";
+        var isDescending = sortOrder?.ToLower() == "desc" || (string.IsNullOrWhiteSpace(sortBy) && string.IsNullOrWhiteSpace(sortOrder));
+
+        query = sortField switch
+        {
+            "name" => isDescending ? query.OrderByDescending(c => c.Name) : query.OrderBy(c => c.Name),
+            "email" => isDescending ? query.OrderByDescending(c => c.Email) : query.OrderBy(c => c.Email),
+            "createdat" => isDescending ? query.OrderByDescending(c => c.CreatedAt) : query.OrderBy(c => c.CreatedAt),
+            _ => query.OrderByDescending(c => c.CreatedAt) // Default to CreatedAt descending for invalid sortBy values
+        };
+
         var items = await query
-            .OrderBy(c => c.Name)
             .Skip(skip)
             .Take(take)
             .ToListAsync();
