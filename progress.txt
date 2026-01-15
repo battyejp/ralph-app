@@ -79,3 +79,27 @@ Thread: https://ampcode.com/threads/$AMP_CURRENT_THREAD_ID
 - Dockerfile uses dotnet restore, build, and publish commands in sequence
 - Build completed successfully with 0 warnings and 0 errors
 ---
+## 2026-01-15 19:13 - US-004
+Thread: https://ampcode.com/threads/$AMP_CURRENT_THREAD_ID
+- Configured Docker Compose for all services (MySQL, Backend API, Frontend)
+- Added backend service with proper dependencies and health checks
+- Added frontend service with volume mounts for hot reload support
+- Verified all services start successfully and are accessible
+- Frontend accessible at http://localhost:3000
+- Backend accessible at http://localhost:5000 (healthy)
+- MySQL accessible at localhost:3306
+
+**Files Modified:**
+- docker-compose.yml (Added backend and frontend services)
+
+**Learnings for future iterations:**
+- Backend service depends on MySQL with health check condition
+- Frontend service depends on backend (basic dependency, no health check needed)
+- Backend uses ASPNETCORE_URLS environment variable to bind to port 5000
+- Backend connection string uses "Server=mysql" (service name) instead of localhost
+- Frontend uses volume mounts for hot reload: ./src/frontend:/app with exclusions for node_modules and .next
+- Frontend target is "dev" stage from multi-stage Dockerfile for development mode
+- All services use restart: always for automatic recovery
+- Backend health check uses curl to /health endpoint with 30s start_period
+- NEXT_PUBLIC_API_URL should point to http://localhost:5000 for client-side API calls
+---

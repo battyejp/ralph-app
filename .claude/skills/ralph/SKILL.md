@@ -31,7 +31,7 @@ Take a PRD (markdown file or text) and convert it to `prd.json` in your ralph di
         "Criterion 1",
         "Criterion 2",
         "Code builds successfully"
-        "All test pass with greater than 80% code coverage"
+        "All Tests pass with code coverage greater than 80%"
       ],
       "priority": 1,
       "passes": false,
@@ -120,7 +120,8 @@ Frontend stories are NOT complete until visually verified. Ralph will use the de
 3. **Priority**: Based on dependency order, then document order
 4. **All stories**: `passes: false` and empty `notes`
 5. **branchName**: Derive from feature name, kebab-case, prefixed with `ralph/`
-6. **Always add**: "Code builds successfully" And "Tests pass with greater than 80% code coverage" to every story's acceptance criteria
+6. **Always add**: "Code builds successfully" to every story's acceptance criteria
+7. **Always add**: "All Tests pass with code coverage greater than 80%" to every story's acceptance criteria
 
 ---
 
