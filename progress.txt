@@ -103,3 +103,39 @@ Thread: https://ampcode.com/threads/$AMP_CURRENT_THREAD_ID
 - Backend health check uses curl to /health endpoint with 30s start_period
 - NEXT_PUBLIC_API_URL should point to http://localhost:5000 for client-side API calls
 ---
+
+## 2026-01-15 19:28 - US-005
+Thread: https://ampcode.com/threads/$AMP_CURRENT_THREAD_ID
+- Implemented API Client Service Layer for frontend
+- Created TypeScript interfaces matching backend DTOs (Customer, PaginatedResponse, CustomerSearchParams, ApiErrorResponse)
+- Implemented customerApi service with searchCustomers() and getCustomerById() methods
+- Added comprehensive error handling with custom ApiError class
+- Configured Jest testing framework for frontend
+- Created comprehensive test suite with 15 tests, 97.82% coverage
+- Build verified successfully via Docker
+- API connectivity verified
+
+**Files Created:**
+- src/frontend/src/lib/api/types.ts (TypeScript interfaces)
+- src/frontend/src/lib/api/customerApi.ts (API client service with error handling)
+- src/frontend/src/lib/api/customerApi.test.ts (Comprehensive test suite)
+- src/frontend/jest.config.js (Jest configuration with 80% coverage threshold)
+- src/frontend/jest.setup.js (Jest setup file)
+
+**Files Modified:**
+- src/frontend/package.json (Added Jest, testing-library, test scripts)
+- src/frontend/package-lock.json (Dependency updates)
+
+**Learnings for future iterations:**
+- API client uses singleton pattern exported as `customerApi`
+- ApiError class extends Error with status and errors properties for structured error handling
+- Network errors (TypeError) are caught and wrapped in ApiError with user-friendly messages
+- Base URL is configured from NEXT_PUBLIC_API_URL environment variable (defaults to http://localhost:5000)
+- Query parameters are built using URLSearchParams for proper encoding
+- Jest tests use mocked global.fetch for isolated unit testing
+- Coverage excludes src/app/** and src/lib/utils.ts to focus on API client code
+- Tests must be run in Docker since Node.js is not installed on host
+- Build command: `docker run --rm frontend-dev npm run build`
+- Test command: `docker run --rm frontend-dev npm test -- --coverage`
+- The backend requires database migrations to be applied before the Customers table exists (this will need to be addressed in future iterations)
+---
