@@ -2,7 +2,7 @@
 # Usage: .\ralph.ps1 [max_iterations]
 
 param(
-    [int]$MaxIterations = 1
+    [int]$MaxIterations = 4
 )
 
 $ErrorActionPreference = "Stop"

@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { SearchForm } from '@/components/SearchForm';
 import CustomerResultsTable from '@/components/CustomerResultsTable';
 import { PaginationControls } from '@/components/PaginationControls';
+import { CustomerDetailsDialog } from '@/components/CustomerDetailsDialog';
 import { customerApi } from '@/lib/api/customerApi';
 import { ApiError } from '@/lib/api/customerApi';
 import type { Customer, CustomerSearchParams } from '@/lib/api/types';
@@ -30,6 +31,10 @@ function HomeContent() {
   // Sort state
   const [sortBy, setSortBy] = useState<'name' | 'email' | 'createdAt' | undefined>(undefined);
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc' | undefined>(undefined);
+
+  // Dialog state
+  const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
 
   // Initialize state from URL parameters
   useEffect(() => {
@@ -183,8 +188,8 @@ function HomeContent() {
   };
 
   const handleCustomerClick = (customer: Customer) => {
-    // TODO: Will implement customer details modal in US-010
-    console.log('Customer clicked:', customer);
+    setSelectedCustomerId(customer.id);
+    setIsDialogOpen(true);
   };
 
   return (
@@ -224,6 +229,12 @@ function HomeContent() {
             )}
           </>
         )}
+
+        <CustomerDetailsDialog
+          customerId={selectedCustomerId}
+          open={isDialogOpen}
+          onOpenChange={setIsDialogOpen}
+        />
       </div>
     </main>
   );
