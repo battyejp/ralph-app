@@ -25,7 +25,8 @@ public class ApplicationDbContext : DbContext
                 .HasMaxLength(100);
 
             entity.Property(e => e.Email)
-                .IsRequired();
+                .IsRequired()
+                .HasMaxLength(255);
 
             entity.HasIndex(e => e.Email)
                 .IsUnique();
