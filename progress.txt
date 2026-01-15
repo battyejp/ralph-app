@@ -297,3 +297,54 @@ Thread: https://ampcode.com/threads/$AMP_CURRENT_THREAD_ID
 - Tests verify: clickability, sort indicators, click handlers, state combinations, and interaction with loading/error/empty states
 ---
 
+## 2026-01-15 23:05 - US-010
+Thread: https://ampcode.com/threads/$AMP_CURRENT_THREAD_ID
+- Implemented Customer Details View feature
+- Created shadcn/ui Dialog component using Radix UI primitives (@radix-ui/react-dialog)
+- Built CustomerDetailsDialog component with comprehensive functionality:
+  - Fetches customer details by ID using customerApi.getCustomerById()
+  - Displays all customer fields: Name, Email, Phone, Address, Created At, Updated At
+  - Handles null/optional fields gracefully (displays 'N/A' for null phone/address)
+  - Loading state with animated spinner during API calls
+  - Error states: specific message for 404 not found, generic message for other errors
+  - Close button (X icon) in top-right corner
+  - Proper date formatting using toLocaleString with en-US locale
+  - Modal overlay with darkened background
+- Integrated dialog into page.tsx:
+  - Added selectedCustomerId and isDialogOpen state variables
+  - Implemented handleCustomerClick to open dialog
+  - Dialog component mounted at root level
+- Comprehensive test suite with 134 total tests passing
+- Achieved 93.1% overall code coverage (88.46% for CustomerDetailsDialog component)
+- Build successful with Next.js production optimization
+- Browser verification completed using dev-browser skill:
+  - Dialog opens correctly when clicking customer row
+  - All fields display properly with correct data
+  - Close button functions correctly
+  - Loading and error states work as expected
+
+**Files Created:**
+- src/frontend/src/components/ui/dialog.tsx (shadcn/ui Dialog with all subcomponents)
+- src/frontend/src/components/CustomerDetailsDialog.tsx (Main dialog component)
+- src/frontend/src/components/CustomerDetailsDialog.test.tsx (Comprehensive test suite)
+
+**Files Modified:**
+- src/frontend/src/app/page.tsx (Added dialog state and integration)
+- prd.json (Marked US-010 as passes: true)
+
+**Learnings for future iterations:**
+- Dialog component uses Radix UI Portal to render outside the main DOM hierarchy
+- @radix-ui/react-dialog was already installed in package.json dependencies
+- Dialog state management requires both customerId and open boolean flags
+- useEffect handles dialog opening/closing and resets state when dialog closes
+- Customer details are fetched fresh each time dialog opens (no caching)
+- Date formatting uses toLocaleString() for user-friendly display
+- Error handling differentiates between 404 (customer not found) and other errors
+- Tests should use findBy queries for async elements instead of getBy with waitFor
+- Dialog Portal rendering requires proper Next.js client-side hydration
+- Production build works differently than dev - restart may be needed to see changes
+- Dialog components require role="dialog" and proper ARIA attributes for accessibility
+- Close button uses sr-only span for screen reader accessibility
+- Loading spinner uses role="status" for accessibility
+---
+
