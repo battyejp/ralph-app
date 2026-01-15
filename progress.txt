@@ -35,3 +35,25 @@ Thread: https://ampcode.com/threads/$AMP_CURRENT_THREAD_ID
 - Environment variables use NEXT_PUBLIC_ prefix for client-side access
 - Next.js 14 uses App Router (app directory) not Pages Router
 ---
+
+## 2026-01-15 16:35 - US-002
+Thread: https://ampcode.com/threads/$AMP_CURRENT_THREAD_ID
+- Created multi-stage Dockerfile for Next.js frontend
+- Configured development stage with hot reload support
+- Added build and production stages for optimized deployment
+- Created .dockerignore to optimize build context
+- Successfully built Docker image for dev stage
+
+**Files Created:**
+- src/frontend/Dockerfile (Multi-stage Docker build)
+- src/frontend/.dockerignore (Optimize build context)
+
+**Learnings for future iterations:**
+- Docker builds successfully using Node.js 20 Alpine
+- Multi-stage build includes: base, deps, dev, builder, production stages
+- Development stage uses `npm run dev` with hot reload support
+- Port 3000 exposed for Next.js development server
+- .dockerignore should exclude node_modules, .next, out, .git to reduce build context size
+- Without .dockerignore, build context was over 360MB; with it, much smaller and faster
+- Production stage requires standalone output configuration in next.config.ts (for future)
+---
