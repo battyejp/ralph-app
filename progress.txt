@@ -185,3 +185,32 @@ Files changed:
 - Sorting combines correctly with existing pagination and filtering - no conflicts
 ---
 
+## 01/15/2026 14:59 - US-009
+Thread: https://ampcode.com/threads/$AMP_CURRENT_THREAD_ID
+- Implemented PUT /api/customers/{id} endpoint in CustomersController
+- Endpoint accepts UpdateCustomerDto and returns 200 OK with updated CustomerResponseDto
+- Returns 404 Not Found when customer doesn't exist with error message
+- Returns 400 Bad Request for invalid model state with validation error details
+- UpdatedAt timestamp is automatically set to current UTC time on update
+- CreatedAt timestamp is preserved from original customer (not modified)
+- Customer Id is preserved during update operation
+- 11 comprehensive unit tests created covering all scenarios
+- All 132 tests passing (11 new UpdateCustomer tests added)
+
+Files changed:
+- CustomerApi/Controllers/CustomersController.cs (added UpdateCustomer method)
+- CustomerApi.Tests/Controllers/CustomersControllerTests.cs (added 11 comprehensive tests for PUT endpoint)
+
+**Learnings for future iterations:**
+- PUT endpoint follows similar pattern to POST - check ModelState first, then check if entity exists
+- Repository UpdateAsync method already existed from previous stories - no changes needed to repository layer
+- Update operations require preserving immutable fields (Id, CreatedAt) while updating mutable ones
+- AutoMapper's Map method can map from DTO to existing entity instance: _mapper.Map(updateDto, existingCustomer)
+- Store original CreatedAt before mapping to preserve it, then explicitly set it back after mapping
+- UpdatedAt must be set to DateTime.UtcNow on every update operation
+- Test patterns for update: verify success case, not found case, invalid model state, timestamp preservation
+- When testing timestamp preservation, capture the customer entity passed to UpdateAsync using Moq Callback
+- Update endpoint uses HttpPut attribute with route parameter: [HttpPut("{id}")]
+- CustomersController maintains 100% test coverage across all methods
+---
+
