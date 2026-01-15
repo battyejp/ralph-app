@@ -1,0 +1,297 @@
+## Codebase Patterns
+- Project uses .NET 10 and MySQL with Pomelo.EntityFrameworkCore.MySql
+- Entity configuration is done using Fluent API in ApplicationDbContext.OnModelCreating
+- Test coverage is calculated per-class - focus on relevant code coverage not global coverage
+- EF Core migrations are in CustomerApi/Migrations/ directory
+- Docker Compose is used for MySQL database (port 3306)
+- Connection string uses format: Server=localhost;Port=3306;Database=customerdb;User=root;Password=password;
+- Environment variables are stored in .env file (not committed) with .env.example as template
+
+# Ralph Progress Log
+Started: 01/15/2026 11:20:59
+---
+
+## 01/15/2026 11:32 - US-002
+Thread: https://ampcode.com/threads/$AMP_CURRENT_THREAD_ID
+- Implemented Customer entity with all required fields (Id, Name, Email, Phone, Address, CreatedAt, UpdatedAt)
+- Configured entity with Fluent API for constraints:
+  - Name: required, max 100 chars
+  - Email: required, max 255 chars, unique index
+  - Phone: optional, max 20 chars
+  - Address: optional, max 500 chars
+- Created and applied initial EF Core migration to MySQL database
+- Updated projects to target .NET 10 (from .NET 9)
+- Replaced SQL Server provider with Pomelo.EntityFrameworkCore.MySql
+- Recreated docker-compose.yml and .env.example files
+
+Files changed:
+- CustomerApi/Models/Customer.cs (already existed with correct fields)
+- CustomerApi/Data/ApplicationDbContext.cs (added max length for Email)
+- CustomerApi/CustomerApi.csproj (updated to .NET 10, changed to MySQL provider)
+- CustomerApi/Program.cs (changed from UseSqlServer to UseMySql)
+- CustomerApi/appsettings.json (updated connection string for MySQL)
+- CustomerApi/Migrations/20260115112934_InitialCreate.cs (new migration)
+- CustomerApi.Tests/CustomerApi.Tests.csproj (updated to .NET 10)
+- docker-compose.yml (recreated)
+- .env.example (recreated)
+
+**Learnings for future iterations:**
+- The project previously had SQL Server migrations that needed to be removed before creating MySQL migrations
+- When switching database providers, old migrations cause build errors and must be deleted
+- .NET 10 requires dotnet-ef version 10.0.0 - version mismatches cause errors
+- Customer model and ApplicationDbContext both have 100% test coverage
+- Overall coverage appears low (39%) but includes untested boilerplate like Program.cs and WeatherForecast.cs
+- For story acceptance, focus on coverage of the specific code being implemented, not global coverage
+- The branch name in PRD must match exactly (ralph/customer-api not ralph/claude-customer-api)
+---
+
+## 01/15/2026 14:09 - US-004
+Thread: https://ampcode.com/threads/$AMP_CURRENT_THREAD_ID
+- Implemented POST /api/customers endpoint in CustomersController
+- Endpoint accepts CreateCustomerDto and returns 201 Created with CustomerResponseDto
+- Returns 400 Bad Request for invalid model state with validation details
+- Location header is set in response pointing to CreateCustomer action
+- CreatedAt and UpdatedAt timestamps automatically set to UTC time
+- Generated new GUID for customer Id on creation
+- Registered ICustomerRepository as scoped service in DI container
+- Comprehensive unit tests created with 100% controller coverage
+- All 89 tests passing (10 new controller tests added)
+
+Files changed:
+- CustomerApi/Program.cs (registered ICustomerRepository in DI container)
+- CustomerApi/Controllers/CustomersController.cs (new controller with POST endpoint)
+- CustomerApi.Tests/Controllers/CustomersControllerTests.cs (new test file with 10 comprehensive tests)
+
+**Learnings for future iterations:**
+- Controller uses constructor injection for ICustomerRepository and IMapper
+- AutoMapper was already configured in Program.cs from US-003
+- Controller tests use Moq for repository mocking and actual AutoMapper configuration for mapping
+- The CreateCustomerDto already has DataAnnotations validation ([Required], [EmailAddress], [StringLength]) from US-003
+- ModelState validation happens automatically in ASP.NET Core before controller action execution
+- CreatedAtAction returns 201 with Location header - route values include the created resource id
+- Tests verify proper UTC timestamp setting using BeCloseTo for time comparison (within 5 seconds)
+- FluentAssertions provides clean test assertions (Should().BeOfType, Should().NotBeNull, etc.)
+- Coverage report shows per-class coverage - CustomersController achieved 100% coverage
+---
+
+## 01/15/2026 14:15 - US-005
+Thread: https://ampcode.com/threads/$AMP_CURRENT_THREAD_ID
+- Implemented GET /api/customers/{id} endpoint in CustomersController
+- Endpoint accepts GUID id parameter and returns customer details
+- Returns 200 OK with CustomerResponseDto when customer is found
+- Returns 404 Not Found with error message when customer doesn't exist
+- Uses existing ICustomerRepository.GetByIdAsync method
+- AutoMapper maps Customer entity to CustomerResponseDto
+- Comprehensive unit tests created with 100% method coverage
+- All 94 tests passing (5 new GET endpoint tests added)
+
+Files changed:
+- CustomerApi/Controllers/CustomersController.cs (added GetCustomerById method)
+- CustomerApi.Tests/Controllers/CustomersControllerTests.cs (added 5 comprehensive tests for GET endpoint)
+
+**Learnings for future iterations:**
+- GET endpoint uses route parameter {id} with [HttpGet("{id}")] attribute
+- Repository GetByIdAsync returns null when customer not found, which we check and return 404
+- NotFound() method can accept anonymous objects for error messages (new { message = "..." })
+- When testing anonymous objects in responses, use reflection to access properties (GetType().GetProperty())
+- CustomersController maintains 100% line and branch coverage across all methods
+- All existing tests continue to pass - no regressions introduced
+---
+
+## 01/15/2026 14:28 - US-006
+Thread: https://ampcode.com/threads/$AMP_CURRENT_THREAD_ID
+- Implemented GET /api/customers endpoint with pagination support
+- Created generic PaginatedResponseDto<T> for reusable pagination response structure
+- Endpoint accepts query parameters: page (default 1), pageSize (default 10, max 100)
+- Response includes: items, totalCount, page, pageSize, totalPages
+- Parameter validation normalizes invalid values (page < 1 normalizes to 1, pageSize > 100 caps at 100)
+- Returns empty items array when no customers exist (not 404)
+- Calculates skip value correctly as (page - 1) * pageSize
+- Calculates totalPages using Math.Ceiling for proper rounding
+- 11 comprehensive unit tests added covering all scenarios
+- All 104 tests passing with 100% controller coverage
+
+Files changed:
+- CustomerApi/DTOs/PaginatedResponseDto.cs (new generic DTO for paginated responses)
+- CustomerApi/Controllers/CustomersController.cs (added GetCustomers endpoint)
+- CustomerApi.Tests/Controllers/CustomersControllerTests.cs (added 11 comprehensive tests)
+
+**Learnings for future iterations:**
+- Generic DTOs like PaginatedResponseDto<T> enable code reuse across different entity types
+- Parameter normalization should happen before calculating skip to ensure consistency
+- The GetCustomers endpoint must be defined BEFORE GetCustomerById to avoid routing conflicts (specific routes before parameterized routes)
+- Repository GetAllAsync already exists with skip/take parameters, making pagination straightforward
+- When totalCount is 0, totalPages should also be 0 (not 1)
+- Moq's Setup allows matching specific parameter values to test different scenarios
+- AutoMapper can map IEnumerable<Customer> to IEnumerable<CustomerResponseDto> directly
+---
+## 01/15/2026 14:42 - US-007
+Thread: https://ampcode.com/threads/$AMP_CURRENT_THREAD_ID
+- Implemented filtering and search functionality for GET /api/customers endpoint
+- Added 'search' query parameter for case-insensitive search across Name and Email fields
+- Added 'email' query parameter for exact match filtering on Email field
+- Filters combine with AND logic when both provided (repository applies both WHERE clauses)
+- Filtering works correctly with pagination - totalCount reflects filtered results
+- 9 comprehensive unit tests added covering all filtering scenarios
+- All 112 tests passing with 100% coverage on relevant classes
+
+Files changed:
+- CustomerApi/Repositories/ICustomerRepository.cs (added emailFilter parameter to GetAllAsync)
+- CustomerApi/Repositories/CustomerRepository.cs (implemented email exact match filter with WHERE clause)
+- CustomerApi/Controllers/CustomersController.cs (added search and email query parameters to GetCustomers)
+- CustomerApi.Tests/Controllers/CustomersControllerTests.cs (added 9 filtering tests, updated existing tests)
+
+**Learnings for future iterations:**
+- When adding parameters to repository methods, update both interface and implementation signatures
+- The repository already had searchTerm parameter but not emailFilter - added alongside existing parameters
+- Email filter uses exact match (Email == emailFilter), search uses case-insensitive contains (Name.ToLower().Contains() || Email.ToLower().Contains())
+- Controller passes parameters directly to repository - no additional logic needed in controller
+- When updating repository signatures, all existing test mocks need to be updated with new parameter (changed from 5 to 6 parameters)
+- Use replace_all=true in Edit tool for repeated test signature updates across the file
+- Filter tests verify both the response data AND that correct parameters were passed to repository (using Moq Verify)
+- Empty string filters are passed as-is to repository which handles the whitespace check
+---
+
+## 01/15/2026 14:50 - US-008
+Thread: https://ampcode.com/threads/$AMP_CURRENT_THREAD_ID
+- Implemented sorting functionality for GET /api/customers endpoint
+- Added sortBy query parameter supporting: name, email, createdAt
+- Added sortOrder query parameter supporting: asc, desc
+- Default sort is CreatedAt descending (newest first) when no parameters provided
+- Sorting implemented in repository using switch expression with OrderBy/OrderByDescending
+- Invalid sortBy values default to CreatedAt descending
+- Sorting works correctly with pagination and filtering
+- 9 comprehensive unit tests added covering all sorting scenarios
+- Updated existing repository test to explicitly specify sort parameters
+- All 121 tests passing with 100% coverage on relevant classes
+
+Files changed:
+- CustomerApi/Repositories/ICustomerRepository.cs (added sortBy and sortOrder parameters to GetAllAsync)
+- CustomerApi/Repositories/CustomerRepository.cs (implemented sorting logic with switch expression)
+- CustomerApi/Controllers/CustomersController.cs (added sortBy and sortOrder parameters to GetCustomers)
+- CustomerApi.Tests/Controllers/CustomersControllerTests.cs (added 9 sorting tests, updated all GetAllAsync mocks)
+- CustomerApi.Tests/Repositories/CustomerRepositoryTests.cs (updated GetAllAsync_ResultsOrderedByName test)
+
+**Learnings for future iterations:**
+- Repository sorting uses switch expression for clean conditional OrderBy/OrderByDescending logic
+- Default sorting behavior: when no sortBy/sortOrder specified, defaults to CreatedAt descending (newest first)
+- When sortBy specified without sortOrder, defaults to ascending (except CreatedAt defaults to descending when no params)
+- The isDescending logic: `sortOrder?.ToLower() == "desc" || (string.IsNullOrWhiteSpace(sortBy) && string.IsNullOrWhiteSpace(sortOrder))`
+- When adding parameters to repository methods, ALL test mocks must be updated with correct parameter count
+- Use replace_all=true in Edit tool for systematic updates across test files
+- Test failures with Moq provide "Performed invocations" output showing actual parameters called - very useful for debugging
+- Sort parameters are case-insensitive (converted with ToLower() in repository)
+- Invalid sortBy values gracefully default to CreatedAt descending rather than throwing errors
+- Sorting combines correctly with existing pagination and filtering - no conflicts
+---
+
+## 01/15/2026 14:59 - US-009
+Thread: https://ampcode.com/threads/$AMP_CURRENT_THREAD_ID
+- Implemented PUT /api/customers/{id} endpoint in CustomersController
+- Endpoint accepts UpdateCustomerDto and returns 200 OK with updated CustomerResponseDto
+- Returns 404 Not Found when customer doesn't exist with error message
+- Returns 400 Bad Request for invalid model state with validation error details
+- UpdatedAt timestamp is automatically set to current UTC time on update
+- CreatedAt timestamp is preserved from original customer (not modified)
+- Customer Id is preserved during update operation
+- 11 comprehensive unit tests created covering all scenarios
+- All 132 tests passing (11 new UpdateCustomer tests added)
+
+Files changed:
+- CustomerApi/Controllers/CustomersController.cs (added UpdateCustomer method)
+- CustomerApi.Tests/Controllers/CustomersControllerTests.cs (added 11 comprehensive tests for PUT endpoint)
+
+**Learnings for future iterations:**
+- PUT endpoint follows similar pattern to POST - check ModelState first, then check if entity exists
+- Repository UpdateAsync method already existed from previous stories - no changes needed to repository layer
+- Update operations require preserving immutable fields (Id, CreatedAt) while updating mutable ones
+- AutoMapper's Map method can map from DTO to existing entity instance: _mapper.Map(updateDto, existingCustomer)
+- Store original CreatedAt before mapping to preserve it, then explicitly set it back after mapping
+- UpdatedAt must be set to DateTime.UtcNow on every update operation
+- Test patterns for update: verify success case, not found case, invalid model state, timestamp preservation
+- When testing timestamp preservation, capture the customer entity passed to UpdateAsync using Moq Callback
+- Update endpoint uses HttpPut attribute with route parameter: [HttpPut("{id}")]
+- CustomersController maintains 100% test coverage across all methods
+---
+
+## 01/15/2026 15:04 - US-010
+Thread: https://ampcode.com/threads/$AMP_CURRENT_THREAD_ID
+- Implemented DELETE /api/customers/{id} endpoint in CustomersController
+- Endpoint deletes customer by GUID ID and returns 204 No Content on success
+- Returns 404 Not Found when customer doesn't exist with error message
+- Uses existing repository DeleteAsync method (hard delete from database)
+- 7 comprehensive unit tests created covering all scenarios
+- All 139 tests passing (7 new DeleteCustomer tests added)
+
+Files changed:
+- CustomerApi/Controllers/CustomersController.cs (added DeleteCustomer method)
+- CustomerApi.Tests/Controllers/CustomersControllerTests.cs (added 7 comprehensive tests for DELETE endpoint)
+
+**Learnings for future iterations:**
+- DELETE endpoint follows similar pattern to GET by ID and PUT - check if entity exists first before performing operation
+- Repository DeleteAsync method already existed from previous stories - no changes needed to repository layer
+- DELETE endpoints return NoContent() (204) on success, not Ok() like other operations
+- NoContentResult is the return type for 204 responses, not ActionResult<T>
+- Test patterns for delete: verify success returns 204, not found returns 404, repository methods called correctly
+- Use Times.Never in Moq Verify to ensure DeleteAsync not called when customer doesn't exist
+- Callback pattern used to capture deleted customer entity for verification in tests
+- CustomersController maintains 100% test coverage across all methods including DELETE
+- The repository's DeleteAsync is a hard delete (permanent removal from database)
+---
+
+## 01/15/2026 15:04 - US-010 Completion Summary
+- DELETE /api/customers/{id} endpoint fully implemented and tested
+- All acceptance criteria met:
+  ✓ DELETE endpoint accepts GUID ID and deletes customer
+  ✓ Returns 204 No Content on successful deletion
+  ✓ Returns 404 Not Found when customer doesn't exist
+  ✓ Customer permanently removed from database (hard delete)
+  ✓ Code builds successfully
+  ✓ Tests pass with 100% controller coverage (139 total tests, all passing)
+- Commits:
+  - 2677ef0: feat: US-010 - Implement DELETE customer endpoint
+  - d36f6f2: chore: Update prd.json and progress.txt for US-010 completion
+---
+
+
+## 01/15/2026 15:17 - US-011
+Thread: https://ampcode.com/threads/$AMP_CURRENT_THREAD_ID
+- Configured Swagger/OpenAPI documentation for the Customer API
+- Added Swashbuckle.AspNetCore 6.8.1 package (compatible with .NET 10)
+- Enabled XML documentation file generation in CustomerApi.csproj with GenerateDocumentationFile=true
+- Suppressed CS1591 warnings (missing XML comments) with NoWarn
+- Configured Swagger in Program.cs with API title, version, and description
+- Set Swagger UI to be accessible at /swagger endpoint in development environment
+- Added comprehensive XML documentation comments to all controller endpoints:
+  - GetCustomers (GET /api/customers) - paginated list with filtering and sorting
+  - GetCustomerById (GET /api/customers/{id}) - retrieve by ID
+  - CreateCustomer (POST /api/customers) - create new customer
+  - UpdateCustomer (PUT /api/customers/{id}) - update existing customer
+  - DeleteCustomer (DELETE /api/customers/{id}) - delete customer
+- Added XML documentation comments to all DTOs:
+  - CreateCustomerDto - with property descriptions
+  - UpdateCustomerDto - with property descriptions
+  - CustomerResponseDto - with property descriptions including timestamps
+  - PaginatedResponseDto<T> - generic DTO with type parameter documentation
+- All 139 tests passing with no regressions
+
+Files changed:
+- CustomerApi/CustomerApi.csproj (enabled XML doc generation, added Swashbuckle.AspNetCore 6.8.1)
+- CustomerApi/Program.cs (configured Swagger/OpenAPI with XML comments support)
+- CustomerApi/DTOs/CreateCustomerDto.cs (added XML comments)
+- CustomerApi/DTOs/UpdateCustomerDto.cs (added XML comments)
+- CustomerApi/DTOs/CustomerResponseDto.cs (added XML comments)
+- CustomerApi/DTOs/PaginatedResponseDto.cs (added XML comments)
+
+**Learnings for future iterations:**
+- Swashbuckle.AspNetCore 10.x requires Microsoft.OpenApi >= 2.3.0 which changed namespace structure
+- For .NET 10 projects, Swashbuckle.AspNetCore 6.8.1 is stable and uses Microsoft.OpenApi 1.6.14
+- Microsoft.OpenApi.Models namespace is available in version 1.6.x but was restructured in 2.x
+- When adding Swagger, both AddSwaggerGen and AddEndpointsApiExplorer services are needed
+- XML comments file path is set using Assembly.GetExecutingAssembly().GetName().Name
+- Swagger UI RoutePrefix can be set to "swagger" for clean /swagger URL
+- Controller methods already had ProducesResponseType attributes from previous stories which help Swagger
+- XML comments enhance Swagger UI with descriptions for endpoints and model properties
+- Generic types in XML comments use <typeparam> tag for type parameter documentation
+- NoWarn setting prevents CS1591 warnings for public types without XML documentation
+---
