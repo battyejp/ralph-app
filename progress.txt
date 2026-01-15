@@ -253,3 +253,45 @@ Files changed:
   - d36f6f2: chore: Update prd.json and progress.txt for US-010 completion
 ---
 
+
+## 01/15/2026 15:17 - US-011
+Thread: https://ampcode.com/threads/$AMP_CURRENT_THREAD_ID
+- Configured Swagger/OpenAPI documentation for the Customer API
+- Added Swashbuckle.AspNetCore 6.8.1 package (compatible with .NET 10)
+- Enabled XML documentation file generation in CustomerApi.csproj with GenerateDocumentationFile=true
+- Suppressed CS1591 warnings (missing XML comments) with NoWarn
+- Configured Swagger in Program.cs with API title, version, and description
+- Set Swagger UI to be accessible at /swagger endpoint in development environment
+- Added comprehensive XML documentation comments to all controller endpoints:
+  - GetCustomers (GET /api/customers) - paginated list with filtering and sorting
+  - GetCustomerById (GET /api/customers/{id}) - retrieve by ID
+  - CreateCustomer (POST /api/customers) - create new customer
+  - UpdateCustomer (PUT /api/customers/{id}) - update existing customer
+  - DeleteCustomer (DELETE /api/customers/{id}) - delete customer
+- Added XML documentation comments to all DTOs:
+  - CreateCustomerDto - with property descriptions
+  - UpdateCustomerDto - with property descriptions
+  - CustomerResponseDto - with property descriptions including timestamps
+  - PaginatedResponseDto<T> - generic DTO with type parameter documentation
+- All 139 tests passing with no regressions
+
+Files changed:
+- CustomerApi/CustomerApi.csproj (enabled XML doc generation, added Swashbuckle.AspNetCore 6.8.1)
+- CustomerApi/Program.cs (configured Swagger/OpenAPI with XML comments support)
+- CustomerApi/DTOs/CreateCustomerDto.cs (added XML comments)
+- CustomerApi/DTOs/UpdateCustomerDto.cs (added XML comments)
+- CustomerApi/DTOs/CustomerResponseDto.cs (added XML comments)
+- CustomerApi/DTOs/PaginatedResponseDto.cs (added XML comments)
+
+**Learnings for future iterations:**
+- Swashbuckle.AspNetCore 10.x requires Microsoft.OpenApi >= 2.3.0 which changed namespace structure
+- For .NET 10 projects, Swashbuckle.AspNetCore 6.8.1 is stable and uses Microsoft.OpenApi 1.6.14
+- Microsoft.OpenApi.Models namespace is available in version 1.6.x but was restructured in 2.x
+- When adding Swagger, both AddSwaggerGen and AddEndpointsApiExplorer services are needed
+- XML comments file path is set using Assembly.GetExecutingAssembly().GetName().Name
+- Swagger UI RoutePrefix can be set to "swagger" for clean /swagger URL
+- Controller methods already had ProducesResponseType attributes from previous stories which help Swagger
+- XML comments enhance Swagger UI with descriptions for endpoints and model properties
+- Generic types in XML comments use <typeparam> tag for type parameter documentation
+- NoWarn setting prevents CS1591 warnings for public types without XML documentation
+---
