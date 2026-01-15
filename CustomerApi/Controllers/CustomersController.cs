@@ -20,6 +20,58 @@ public class CustomersController : ControllerBase
     }
 
     /// <summary>
+    /// Gets a paginated list of customers
+    /// </summary>
+    /// <param name="page">Page number (default 1, minimum 1)</param>
+    /// <param name="pageSize">Number of items per page (default 10, max 100)</param>
+    /// <returns>Paginated list of customers</returns>
+    [HttpGet]
+    [ProducesResponseType(typeof(PaginatedResponseDto<CustomerResponseDto>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<PaginatedResponseDto<CustomerResponseDto>>> GetCustomers(
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 10)
+    {
+        // Validate and normalize parameters
+        if (page < 1)
+        {
+            page = 1;
+        }
+
+        if (pageSize < 1)
+        {
+            pageSize = 10;
+        }
+        else if (pageSize > 100)
+        {
+            pageSize = 100;
+        }
+
+        // Calculate skip
+        int skip = (page - 1) * pageSize;
+
+        // Get paginated data from repository
+        var (customers, totalCount) = await _repository.GetAllAsync(skip, pageSize);
+
+        // Map to response DTOs
+        var customerDtos = _mapper.Map<IEnumerable<CustomerResponseDto>>(customers);
+
+        // Calculate total pages
+        int totalPages = (int)Math.Ceiling(totalCount / (double)pageSize);
+
+        // Create paginated response
+        var response = new PaginatedResponseDto<CustomerResponseDto>
+        {
+            Items = customerDtos,
+            TotalCount = totalCount,
+            Page = page,
+            PageSize = pageSize,
+            TotalPages = totalPages
+        };
+
+        return Ok(response);
+    }
+
+    /// <summary>
     /// Gets a customer by ID
     /// </summary>
     /// <param name="id">Customer GUID identifier</param>

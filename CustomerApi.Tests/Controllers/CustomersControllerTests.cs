@@ -458,4 +458,271 @@ public class CustomersControllerTests
     }
 
     #endregion
+
+    #region GetCustomers Tests
+
+    [Fact]
+    public async Task GetCustomers_DefaultParameters_Returns200OkWithPaginatedResponse()
+    {
+        // Arrange
+        var customers = new List<Customer>
+        {
+            new Customer
+            {
+                Id = Guid.NewGuid(),
+                Name = "Customer 1",
+                Email = "customer1@example.com",
+                CreatedAt = DateTime.UtcNow.AddDays(-2),
+                UpdatedAt = DateTime.UtcNow.AddDays(-2)
+            },
+            new Customer
+            {
+                Id = Guid.NewGuid(),
+                Name = "Customer 2",
+                Email = "customer2@example.com",
+                CreatedAt = DateTime.UtcNow.AddDays(-1),
+                UpdatedAt = DateTime.UtcNow.AddDays(-1)
+            }
+        };
+
+        _mockRepository
+            .Setup(r => r.GetAllAsync(0, 10, null, null, null))
+            .ReturnsAsync((customers, 2));
+
+        // Act
+        var result = await _controller.GetCustomers();
+
+        // Assert
+        result.Result.Should().BeOfType<OkObjectResult>();
+        var okResult = result.Result as OkObjectResult;
+        okResult!.StatusCode.Should().Be(200);
+
+        var response = okResult.Value as PaginatedResponseDto<CustomerResponseDto>;
+        response.Should().NotBeNull();
+        response!.Items.Should().HaveCount(2);
+        response.TotalCount.Should().Be(2);
+        response.Page.Should().Be(1);
+        response.PageSize.Should().Be(10);
+        response.TotalPages.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task GetCustomers_CustomPageAndPageSize_ReturnsPaginatedResponse()
+    {
+        // Arrange
+        var customers = new List<Customer>
+        {
+            new Customer
+            {
+                Id = Guid.NewGuid(),
+                Name = "Customer 6",
+                Email = "customer6@example.com",
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            }
+        };
+
+        _mockRepository
+            .Setup(r => r.GetAllAsync(10, 5, null, null, null))
+            .ReturnsAsync((customers, 15));
+
+        // Act
+        var result = await _controller.GetCustomers(page: 3, pageSize: 5);
+
+        // Assert
+        result.Result.Should().BeOfType<OkObjectResult>();
+        var okResult = result.Result as OkObjectResult;
+        var response = okResult!.Value as PaginatedResponseDto<CustomerResponseDto>;
+
+        response.Should().NotBeNull();
+        response!.Items.Should().HaveCount(1);
+        response.TotalCount.Should().Be(15);
+        response.Page.Should().Be(3);
+        response.PageSize.Should().Be(5);
+        response.TotalPages.Should().Be(3);
+    }
+
+    [Fact]
+    public async Task GetCustomers_PageSizeExceedsMax_CapsAt100()
+    {
+        // Arrange
+        var customers = new List<Customer>();
+        _mockRepository
+            .Setup(r => r.GetAllAsync(0, 100, null, null, null))
+            .ReturnsAsync((customers, 0));
+
+        // Act
+        var result = await _controller.GetCustomers(page: 1, pageSize: 200);
+
+        // Assert
+        var okResult = result.Result as OkObjectResult;
+        var response = okResult!.Value as PaginatedResponseDto<CustomerResponseDto>;
+        response!.PageSize.Should().Be(100);
+
+        _mockRepository.Verify(r => r.GetAllAsync(0, 100, null, null, null), Times.Once);
+    }
+
+    [Fact]
+    public async Task GetCustomers_PageLessThan1_NormalizesTo1()
+    {
+        // Arrange
+        var customers = new List<Customer>();
+        _mockRepository
+            .Setup(r => r.GetAllAsync(0, 10, null, null, null))
+            .ReturnsAsync((customers, 0));
+
+        // Act
+        var result = await _controller.GetCustomers(page: 0, pageSize: 10);
+
+        // Assert
+        var okResult = result.Result as OkObjectResult;
+        var response = okResult!.Value as PaginatedResponseDto<CustomerResponseDto>;
+        response!.Page.Should().Be(1);
+
+        _mockRepository.Verify(r => r.GetAllAsync(0, 10, null, null, null), Times.Once);
+    }
+
+    [Fact]
+    public async Task GetCustomers_PageSizeLessThan1_NormalizesTo10()
+    {
+        // Arrange
+        var customers = new List<Customer>();
+        _mockRepository
+            .Setup(r => r.GetAllAsync(0, 10, null, null, null))
+            .ReturnsAsync((customers, 0));
+
+        // Act
+        var result = await _controller.GetCustomers(page: 1, pageSize: 0);
+
+        // Assert
+        var okResult = result.Result as OkObjectResult;
+        var response = okResult!.Value as PaginatedResponseDto<CustomerResponseDto>;
+        response!.PageSize.Should().Be(10);
+
+        _mockRepository.Verify(r => r.GetAllAsync(0, 10, null, null, null), Times.Once);
+    }
+
+    [Fact]
+    public async Task GetCustomers_NoCustomersExist_ReturnsEmptyItems()
+    {
+        // Arrange
+        var customers = new List<Customer>();
+        _mockRepository
+            .Setup(r => r.GetAllAsync(0, 10, null, null, null))
+            .ReturnsAsync((customers, 0));
+
+        // Act
+        var result = await _controller.GetCustomers();
+
+        // Assert
+        result.Result.Should().BeOfType<OkObjectResult>();
+        var okResult = result.Result as OkObjectResult;
+        var response = okResult!.Value as PaginatedResponseDto<CustomerResponseDto>;
+
+        response.Should().NotBeNull();
+        response!.Items.Should().BeEmpty();
+        response.TotalCount.Should().Be(0);
+        response.TotalPages.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task GetCustomers_CalculatesSkipCorrectly()
+    {
+        // Arrange
+        var customers = new List<Customer>();
+        _mockRepository
+            .Setup(r => r.GetAllAsync(40, 20, null, null, null))
+            .ReturnsAsync((customers, 100));
+
+        // Act
+        await _controller.GetCustomers(page: 3, pageSize: 20);
+
+        // Assert - verify skip is (page - 1) * pageSize = 2 * 20 = 40
+        _mockRepository.Verify(r => r.GetAllAsync(40, 20, null, null, null), Times.Once);
+    }
+
+    [Fact]
+    public async Task GetCustomers_CalculatesTotalPagesCorrectly()
+    {
+        // Arrange
+        var customers = new List<Customer>();
+        _mockRepository
+            .Setup(r => r.GetAllAsync(0, 10, null, null, null))
+            .ReturnsAsync((customers, 25));
+
+        // Act
+        var result = await _controller.GetCustomers(page: 1, pageSize: 10);
+
+        // Assert - totalPages should be ceiling(25/10) = 3
+        var okResult = result.Result as OkObjectResult;
+        var response = okResult!.Value as PaginatedResponseDto<CustomerResponseDto>;
+        response!.TotalPages.Should().Be(3);
+    }
+
+    [Fact]
+    public async Task GetCustomers_MapsCustomersToResponseDtos()
+    {
+        // Arrange
+        var customer = new Customer
+        {
+            Id = Guid.NewGuid(),
+            Name = "Test Customer",
+            Email = "test@example.com",
+            Phone = "+1234567890",
+            Address = "123 Test St",
+            CreatedAt = DateTime.UtcNow.AddDays(-5),
+            UpdatedAt = DateTime.UtcNow.AddDays(-1)
+        };
+
+        _mockRepository
+            .Setup(r => r.GetAllAsync(0, 10, null, null, null))
+            .ReturnsAsync((new List<Customer> { customer }, 1));
+
+        // Act
+        var result = await _controller.GetCustomers();
+
+        // Assert
+        var okResult = result.Result as OkObjectResult;
+        var response = okResult!.Value as PaginatedResponseDto<CustomerResponseDto>;
+        var dto = response!.Items.First();
+
+        dto.Id.Should().Be(customer.Id);
+        dto.Name.Should().Be(customer.Name);
+        dto.Email.Should().Be(customer.Email);
+        dto.Phone.Should().Be(customer.Phone);
+        dto.Address.Should().Be(customer.Address);
+        dto.CreatedAt.Should().Be(customer.CreatedAt);
+        dto.UpdatedAt.Should().Be(customer.UpdatedAt);
+    }
+
+    [Fact]
+    public async Task GetCustomers_MultipleCustomers_ReturnsAllInPage()
+    {
+        // Arrange
+        var customers = Enumerable.Range(1, 10).Select(i => new Customer
+        {
+            Id = Guid.NewGuid(),
+            Name = $"Customer {i}",
+            Email = $"customer{i}@example.com",
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        }).ToList();
+
+        _mockRepository
+            .Setup(r => r.GetAllAsync(0, 10, null, null, null))
+            .ReturnsAsync((customers, 50));
+
+        // Act
+        var result = await _controller.GetCustomers();
+
+        // Assert
+        var okResult = result.Result as OkObjectResult;
+        var response = okResult!.Value as PaginatedResponseDto<CustomerResponseDto>;
+
+        response!.Items.Should().HaveCount(10);
+        response.TotalCount.Should().Be(50);
+        response.TotalPages.Should().Be(5);
+    }
+
+    #endregion
 }
