@@ -12,6 +12,22 @@ $PrdFile = Join-Path $ScriptDir "prd.json"
 $ProgressFile = Join-Path $ScriptDir "progress.txt"
 $ArchiveDir = Join-Path $ScriptDir "archive"
 $LastBranchFile = Join-Path $ScriptDir ".last-branch"
+$LogDir = Join-Path $ScriptDir "logs"
+$LogFile = Join-Path $LogDir "ralph-$(Get-Date -Format 'yyyy-MM-dd-HHmmss').log"
+
+# Initialize log directory and file
+if (-not (Test-Path $LogDir)) {
+    New-Item -ItemType Directory -Path $LogDir -Force | Out-Null
+}
+
+# Helper function to write to both console and log file
+function Write-Log {
+    param([string]$Message)
+    $Timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+    $LogMessage = "[$Timestamp] $Message"
+    Write-Host $LogMessage
+    Add-Content -Path $LogFile -Value $LogMessage
+}
 
 # Archive previous run if branch changed
 if ((Test-Path $PrdFile) -and (Test-Path $LastBranchFile)) {
@@ -78,39 +94,51 @@ if (-not (Test-Path $ProgressFile)) {
     ) | Set-Content $ProgressFile
 }
 
-Write-Host "Starting Ralph - Max iterations: $MaxIterations"
+Write-Log "Starting Ralph - Max iterations: $MaxIterations"
+Write-Log "Log file: $LogFile"
 
 for ($i = 1; $i -le $MaxIterations; $i++) {
     Write-Host ""
-    Write-Host "═══════════════════════════════════════════════════════"
+    Write-Host "======================================================="
     Write-Host "  Ralph Iteration $i of $MaxIterations"
-    Write-Host "═══════════════════════════════════════════════════════"
+    Write-Host "======================================================="
+    Add-Content -Path $LogFile -Value ""
+    Add-Content -Path $LogFile -Value "======================================================="
+    Add-Content -Path $LogFile -Value "  Ralph Iteration $i of $MaxIterations"
+    Add-Content -Path $LogFile -Value "======================================================="
 
     # Run claude with the ralph prompt
     $PromptFile = Join-Path $ScriptDir "prompt.md"
     $PromptContent = Get-Content $PromptFile -Raw
 
     try {
-        # Pipe prompt to claude and capture output while also displaying it
-        $Output = $PromptContent | claude --dangerously-skip-permissions 2>&1 | Tee-Object -Variable OutputCapture
-        $Output = $OutputCapture -join "`n"
+        # Pipe prompt to claude, display it, and capture to log file
+        $Output = $PromptContent | claude --dangerously-skip-permissions 2>&1 | ForEach-Object {
+            $line = $_
+            Write-Host $line
+            Add-Content -Path $LogFile -Value $line
+            $line
+        }
+        $Output = $Output -join "`n"
     } catch {
         $Output = ""
+        Write-Log "Claude execution failed: $_"
     }
 
     # Check for completion signal
     if ($Output -match "<promise>COMPLETE</promise>") {
         Write-Host ""
-        Write-Host "Ralph completed all tasks!"
-        Write-Host "Completed at iteration $i of $MaxIterations"
+        Write-Log "Ralph completed all tasks!"
+        Write-Log "Completed at iteration $i of $MaxIterations"
         exit 0
     }
 
-    Write-Host "Iteration $i complete. Continuing..."
+    Write-Log "Iteration $i complete. Continuing..."
     Start-Sleep -Seconds 2
 }
 
 Write-Host ""
-Write-Host "Ralph reached max iterations ($MaxIterations) without completing all tasks."
-Write-Host "Check $ProgressFile for status."
+Write-Log "Ralph reached max iterations ($MaxIterations) without completing all tasks."
+Write-Log "Check $ProgressFile for status."
+Write-Log "Check $LogFile for full log."
 exit 1
