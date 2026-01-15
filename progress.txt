@@ -214,3 +214,28 @@ Files changed:
 - CustomersController maintains 100% test coverage across all methods
 ---
 
+## 01/15/2026 15:04 - US-010
+Thread: https://ampcode.com/threads/$AMP_CURRENT_THREAD_ID
+- Implemented DELETE /api/customers/{id} endpoint in CustomersController
+- Endpoint deletes customer by GUID ID and returns 204 No Content on success
+- Returns 404 Not Found when customer doesn't exist with error message
+- Uses existing repository DeleteAsync method (hard delete from database)
+- 7 comprehensive unit tests created covering all scenarios
+- All 139 tests passing (7 new DeleteCustomer tests added)
+
+Files changed:
+- CustomerApi/Controllers/CustomersController.cs (added DeleteCustomer method)
+- CustomerApi.Tests/Controllers/CustomersControllerTests.cs (added 7 comprehensive tests for DELETE endpoint)
+
+**Learnings for future iterations:**
+- DELETE endpoint follows similar pattern to GET by ID and PUT - check if entity exists first before performing operation
+- Repository DeleteAsync method already existed from previous stories - no changes needed to repository layer
+- DELETE endpoints return NoContent() (204) on success, not Ok() like other operations
+- NoContentResult is the return type for 204 responses, not ActionResult<T>
+- Test patterns for delete: verify success returns 204, not found returns 404, repository methods called correctly
+- Use Times.Never in Moq Verify to ensure DeleteAsync not called when customer doesn't exist
+- Callback pattern used to capture deleted customer entity for verification in tests
+- CustomersController maintains 100% test coverage across all methods including DELETE
+- The repository's DeleteAsync is a hard delete (permanent removal from database)
+---
+

@@ -163,7 +163,7 @@
                 "Tests pass with greater than 80% code coverage"
             ],
             "priority": 10,
-            "passes": false,
+            "passes": true,
             "notes": ""
         },
         {
