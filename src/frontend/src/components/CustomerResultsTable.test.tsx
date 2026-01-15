@@ -328,4 +328,334 @@ describe('CustomerResultsTable', () => {
       expect(screen.getAllByText(/Dec 25, 2023/i).length).toBeGreaterThan(0);
     });
   });
+
+  describe('Sorting Functionality', () => {
+    describe('Column Headers', () => {
+      test('renders sortable column headers when onSortChange is provided', () => {
+        const onSortChange = jest.fn();
+        render(
+          <CustomerResultsTable
+            {...defaultProps}
+            customers={mockCustomers}
+            onSortChange={onSortChange}
+          />
+        );
+
+        expect(screen.getByText('Name')).toBeInTheDocument();
+        expect(screen.getByText('Email')).toBeInTheDocument();
+        expect(screen.getByText('Created At')).toBeInTheDocument();
+      });
+
+      test('name column header is clickable when onSortChange is provided', () => {
+        const onSortChange = jest.fn();
+        render(
+          <CustomerResultsTable
+            {...defaultProps}
+            customers={mockCustomers}
+            onSortChange={onSortChange}
+          />
+        );
+
+        const nameHeader = screen.getByText('Name').closest('th');
+        expect(nameHeader).toHaveClass('cursor-pointer');
+      });
+
+      test('email column header is clickable when onSortChange is provided', () => {
+        const onSortChange = jest.fn();
+        render(
+          <CustomerResultsTable
+            {...defaultProps}
+            customers={mockCustomers}
+            onSortChange={onSortChange}
+          />
+        );
+
+        const emailHeader = screen.getByText('Email').closest('th');
+        expect(emailHeader).toHaveClass('cursor-pointer');
+      });
+
+      test('created at column header is clickable when onSortChange is provided', () => {
+        const onSortChange = jest.fn();
+        render(
+          <CustomerResultsTable
+            {...defaultProps}
+            customers={mockCustomers}
+            onSortChange={onSortChange}
+          />
+        );
+
+        const createdAtHeader = screen.getByText('Created At').closest('th');
+        expect(createdAtHeader).toHaveClass('cursor-pointer');
+      });
+
+      test('phone column header is not clickable (no sorting)', () => {
+        const onSortChange = jest.fn();
+        render(
+          <CustomerResultsTable
+            {...defaultProps}
+            customers={mockCustomers}
+            onSortChange={onSortChange}
+          />
+        );
+
+        const phoneHeader = screen.getByText('Phone').closest('th');
+        expect(phoneHeader).not.toHaveClass('cursor-pointer');
+      });
+
+      test('column headers are not clickable when onSortChange is not provided', () => {
+        render(
+          <CustomerResultsTable {...defaultProps} customers={mockCustomers} />
+        );
+
+        const nameHeader = screen.getByText('Name').closest('th');
+        expect(nameHeader).not.toHaveClass('cursor-pointer');
+      });
+    });
+
+    describe('Sort Indicators', () => {
+      test('shows ascending arrow when sorted by name ascending', () => {
+        const onSortChange = jest.fn();
+        const { container } = render(
+          <CustomerResultsTable
+            {...defaultProps}
+            customers={mockCustomers}
+            sortBy="name"
+            sortOrder="asc"
+            onSortChange={onSortChange}
+          />
+        );
+
+        // Check for primary colored up arrow
+        const upArrows = container.querySelectorAll('.text-primary');
+        expect(upArrows.length).toBeGreaterThan(0);
+      });
+
+      test('shows descending arrow when sorted by name descending', () => {
+        const onSortChange = jest.fn();
+        const { container } = render(
+          <CustomerResultsTable
+            {...defaultProps}
+            customers={mockCustomers}
+            sortBy="name"
+            sortOrder="desc"
+            onSortChange={onSortChange}
+          />
+        );
+
+        // Check for primary colored down arrow
+        const downArrows = container.querySelectorAll('.text-primary');
+        expect(downArrows.length).toBeGreaterThan(0);
+      });
+
+      test('shows ascending arrow when sorted by email ascending', () => {
+        const onSortChange = jest.fn();
+        const { container } = render(
+          <CustomerResultsTable
+            {...defaultProps}
+            customers={mockCustomers}
+            sortBy="email"
+            sortOrder="asc"
+            onSortChange={onSortChange}
+          />
+        );
+
+        const upArrows = container.querySelectorAll('.text-primary');
+        expect(upArrows.length).toBeGreaterThan(0);
+      });
+
+      test('shows ascending arrow when sorted by createdAt ascending', () => {
+        const onSortChange = jest.fn();
+        const { container } = render(
+          <CustomerResultsTable
+            {...defaultProps}
+            customers={mockCustomers}
+            sortBy="createdAt"
+            sortOrder="asc"
+            onSortChange={onSortChange}
+          />
+        );
+
+        const upArrows = container.querySelectorAll('.text-primary');
+        expect(upArrows.length).toBeGreaterThan(0);
+      });
+
+      test('does not show sort indicators when not sorted', () => {
+        const onSortChange = jest.fn();
+        const { container } = render(
+          <CustomerResultsTable
+            {...defaultProps}
+            customers={mockCustomers}
+            onSortChange={onSortChange}
+          />
+        );
+
+        // When no sort is active, arrows should be muted
+        const mutedArrows = container.querySelectorAll('.text-muted-foreground\\/30');
+        expect(mutedArrows.length).toBeGreaterThan(0);
+      });
+    });
+
+    describe('Sort Click Handlers', () => {
+      test('calls onSortChange with name when name header is clicked', () => {
+        const onSortChange = jest.fn();
+        render(
+          <CustomerResultsTable
+            {...defaultProps}
+            customers={mockCustomers}
+            onSortChange={onSortChange}
+          />
+        );
+
+        const nameHeader = screen.getByText('Name').closest('th');
+        if (nameHeader) fireEvent.click(nameHeader);
+
+        expect(onSortChange).toHaveBeenCalledTimes(1);
+        expect(onSortChange).toHaveBeenCalledWith('name');
+      });
+
+      test('calls onSortChange with email when email header is clicked', () => {
+        const onSortChange = jest.fn();
+        render(
+          <CustomerResultsTable
+            {...defaultProps}
+            customers={mockCustomers}
+            onSortChange={onSortChange}
+          />
+        );
+
+        const emailHeader = screen.getByText('Email').closest('th');
+        if (emailHeader) fireEvent.click(emailHeader);
+
+        expect(onSortChange).toHaveBeenCalledTimes(1);
+        expect(onSortChange).toHaveBeenCalledWith('email');
+      });
+
+      test('calls onSortChange with createdAt when created at header is clicked', () => {
+        const onSortChange = jest.fn();
+        render(
+          <CustomerResultsTable
+            {...defaultProps}
+            customers={mockCustomers}
+            onSortChange={onSortChange}
+          />
+        );
+
+        const createdAtHeader = screen.getByText('Created At').closest('th');
+        if (createdAtHeader) fireEvent.click(createdAtHeader);
+
+        expect(onSortChange).toHaveBeenCalledTimes(1);
+        expect(onSortChange).toHaveBeenCalledWith('createdAt');
+      });
+
+      test('does not call onSortChange when phone header is clicked', () => {
+        const onSortChange = jest.fn();
+        render(
+          <CustomerResultsTable
+            {...defaultProps}
+            customers={mockCustomers}
+            onSortChange={onSortChange}
+          />
+        );
+
+        const phoneHeader = screen.getByText('Phone').closest('th');
+        if (phoneHeader) fireEvent.click(phoneHeader);
+
+        expect(onSortChange).not.toHaveBeenCalled();
+      });
+    });
+
+    describe('Sort State Combinations', () => {
+      test('renders correctly when sorted by name ascending', () => {
+        const onSortChange = jest.fn();
+        render(
+          <CustomerResultsTable
+            {...defaultProps}
+            customers={mockCustomers}
+            sortBy="name"
+            sortOrder="asc"
+            onSortChange={onSortChange}
+          />
+        );
+
+        expect(screen.getAllByText('John Doe').length).toBeGreaterThan(0);
+      });
+
+      test('renders correctly when sorted by email descending', () => {
+        const onSortChange = jest.fn();
+        render(
+          <CustomerResultsTable
+            {...defaultProps}
+            customers={mockCustomers}
+            sortBy="email"
+            sortOrder="desc"
+            onSortChange={onSortChange}
+          />
+        );
+
+        expect(screen.getAllByText('jane@example.com').length).toBeGreaterThan(0);
+      });
+
+      test('renders correctly when sorted by createdAt ascending', () => {
+        const onSortChange = jest.fn();
+        render(
+          <CustomerResultsTable
+            {...defaultProps}
+            customers={mockCustomers}
+            sortBy="createdAt"
+            sortOrder="asc"
+            onSortChange={onSortChange}
+          />
+        );
+
+        expect(screen.getAllByText(/Jan 15, 2024/i).length).toBeGreaterThan(0);
+      });
+    });
+
+    describe('Sort with Different States', () => {
+      test('sorting works with loading state', () => {
+        const onSortChange = jest.fn();
+        render(
+          <CustomerResultsTable
+            {...defaultProps}
+            loading={true}
+            sortBy="name"
+            sortOrder="asc"
+            onSortChange={onSortChange}
+          />
+        );
+
+        expect(screen.getByText('Loading customers...')).toBeInTheDocument();
+      });
+
+      test('sorting works with error state', () => {
+        const onSortChange = jest.fn();
+        render(
+          <CustomerResultsTable
+            {...defaultProps}
+            error="Error message"
+            sortBy="name"
+            sortOrder="asc"
+            onSortChange={onSortChange}
+          />
+        );
+
+        expect(screen.getByText('Error Loading Customers')).toBeInTheDocument();
+      });
+
+      test('sorting works with empty state', () => {
+        const onSortChange = jest.fn();
+        render(
+          <CustomerResultsTable
+            {...defaultProps}
+            customers={[]}
+            sortBy="name"
+            sortOrder="asc"
+            onSortChange={onSortChange}
+          />
+        );
+
+        expect(screen.getByText('No Customers Found')).toBeInTheDocument();
+      });
+    });
+  });
 });

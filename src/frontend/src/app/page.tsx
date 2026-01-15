@@ -27,13 +27,21 @@ function HomeContent() {
   // Search filters state
   const [searchFilters, setSearchFilters] = useState<CustomerSearchParams>({});
 
+  // Sort state
+  const [sortBy, setSortBy] = useState<'name' | 'email' | 'createdAt' | undefined>(undefined);
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc' | undefined>(undefined);
+
   // Initialize state from URL parameters
   useEffect(() => {
     const page = parseInt(searchParams.get('page') || '1', 10);
     const size = parseInt(searchParams.get('pageSize') || '25', 10);
+    const urlSortBy = searchParams.get('sortBy') as 'name' | 'email' | 'createdAt' | null;
+    const urlSortOrder = searchParams.get('sortOrder') as 'asc' | 'desc' | null;
 
     setCurrentPage(page);
     setPageSize(size);
+    if (urlSortBy) setSortBy(urlSortBy);
+    if (urlSortOrder) setSortOrder(urlSortOrder);
   }, [searchParams]);
 
   const updateURL = (params: CustomerSearchParams) => {
@@ -64,7 +72,7 @@ function HomeContent() {
 
   const handleSearch = async (params: CustomerSearchParams) => {
     // Reset to page 1 when new search is triggered
-    const searchParams = { ...params, page: 1, pageSize };
+    const searchParams = { ...params, page: 1, pageSize, sortBy, sortOrder };
     setSearchFilters(params);
     setCurrentPage(1);
     setIsLoading(true);
@@ -92,7 +100,7 @@ function HomeContent() {
   };
 
   const handlePageChange = async (page: number) => {
-    const params = { ...searchFilters, page, pageSize };
+    const params = { ...searchFilters, page, pageSize, sortBy, sortOrder };
     setCurrentPage(page);
     setIsLoading(true);
     setError(null);
@@ -117,9 +125,42 @@ function HomeContent() {
 
   const handlePageSizeChange = async (newPageSize: number) => {
     // Reset to page 1 when page size changes
-    const params = { ...searchFilters, page: 1, pageSize: newPageSize };
+    const params = { ...searchFilters, page: 1, pageSize: newPageSize, sortBy, sortOrder };
     setPageSize(newPageSize);
     setCurrentPage(1);
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const response = await customerApi.searchCustomers(params);
+      setCustomers(response.items);
+      setTotalPages(response.totalPages);
+      setTotalCount(response.totalCount);
+      updateURL(params);
+    } catch (err) {
+      if (err instanceof ApiError) {
+        setError(err.message);
+      } else {
+        setError('An unexpected error occurred. Please try again.');
+      }
+      setCustomers([]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSortChange = async (column: 'name' | 'email' | 'createdAt') => {
+    // Toggle sort order if clicking the same column, default to 'asc' for new column
+    let newSortOrder: 'asc' | 'desc' = 'asc';
+    if (sortBy === column) {
+      newSortOrder = sortOrder === 'asc' ? 'desc' : 'asc';
+    }
+
+    setSortBy(column);
+    setSortOrder(newSortOrder);
+
+    // Preserve current search and pagination, but stay on current page
+    const params = { ...searchFilters, page: currentPage, pageSize, sortBy: column, sortOrder: newSortOrder };
     setIsLoading(true);
     setError(null);
 
@@ -165,6 +206,9 @@ function HomeContent() {
               loading={isLoading}
               error={error}
               onCustomerClick={handleCustomerClick}
+              sortBy={sortBy}
+              sortOrder={sortOrder}
+              onSortChange={handleSortChange}
             />
 
             {!error && totalCount > 0 && (

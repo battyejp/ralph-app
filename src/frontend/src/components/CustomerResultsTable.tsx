@@ -16,6 +16,9 @@ export interface CustomerResultsTableProps {
   loading: boolean;
   error: string | null;
   onCustomerClick: (customer: Customer) => void;
+  sortBy?: 'name' | 'email' | 'createdAt';
+  sortOrder?: 'asc' | 'desc';
+  onSortChange?: (sortBy: 'name' | 'email' | 'createdAt') => void;
 }
 
 /**
@@ -31,6 +34,58 @@ function formatDate(isoDate: string): string {
 }
 
 /**
+ * SortableTableHeader - Renders a clickable column header with sort indicator
+ */
+interface SortableHeaderProps {
+  column: 'name' | 'email' | 'createdAt';
+  label: string;
+  sortBy?: 'name' | 'email' | 'createdAt';
+  sortOrder?: 'asc' | 'desc';
+  onSortChange?: (column: 'name' | 'email' | 'createdAt') => void;
+}
+
+function SortableTableHeader({
+  column,
+  label,
+  sortBy,
+  sortOrder,
+  onSortChange,
+}: SortableHeaderProps) {
+  const isActive = sortBy === column;
+  const showUpArrow = isActive && sortOrder === 'asc';
+  const showDownArrow = isActive && sortOrder === 'desc';
+
+  return (
+    <TableHead
+      onClick={() => onSortChange?.(column)}
+      className={onSortChange ? 'cursor-pointer select-none hover:bg-muted/50' : ''}
+    >
+      <div className="flex items-center gap-1">
+        <span>{label}</span>
+        {onSortChange && (
+          <div className="flex flex-col">
+            <svg
+              className={`h-3 w-3 ${showUpArrow ? 'text-primary' : 'text-muted-foreground/30'}`}
+              fill="currentColor"
+              viewBox="0 0 20 20"
+            >
+              <path d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L10 6.414l-3.293 3.293a1 1 0 01-1.414 0z" />
+            </svg>
+            <svg
+              className={`h-3 w-3 -mt-1 ${showDownArrow ? 'text-primary' : 'text-muted-foreground/30'}`}
+              fill="currentColor"
+              viewBox="0 0 20 20"
+            >
+              <path d="M14.707 10.293a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L10 13.586l3.293-3.293a1 1 0 011.414 0z" />
+            </svg>
+          </div>
+        )}
+      </div>
+    </TableHead>
+  );
+}
+
+/**
  * CustomerResultsTable - Displays customer search results in a table format
  *
  * Features:
@@ -38,6 +93,7 @@ function formatDate(isoDate: string): string {
  * - Empty state when no results
  * - Error state when API fails
  * - Clickable rows to view customer details
+ * - Sortable columns (Name, Email, Created At)
  * - Responsive design: table on desktop, card view on mobile
  */
 export default function CustomerResultsTable({
@@ -45,6 +101,9 @@ export default function CustomerResultsTable({
   loading,
   error,
   onCustomerClick,
+  sortBy,
+  sortOrder,
+  onSortChange,
 }: CustomerResultsTableProps) {
   // Loading State
   if (loading) {
@@ -126,10 +185,28 @@ export default function CustomerResultsTable({
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Name</TableHead>
-              <TableHead>Email</TableHead>
+              <SortableTableHeader
+                column="name"
+                label="Name"
+                sortBy={sortBy}
+                sortOrder={sortOrder}
+                onSortChange={onSortChange}
+              />
+              <SortableTableHeader
+                column="email"
+                label="Email"
+                sortBy={sortBy}
+                sortOrder={sortOrder}
+                onSortChange={onSortChange}
+              />
               <TableHead>Phone</TableHead>
-              <TableHead>Created At</TableHead>
+              <SortableTableHeader
+                column="createdAt"
+                label="Created At"
+                sortBy={sortBy}
+                sortOrder={sortOrder}
+                onSortChange={onSortChange}
+              />
             </TableRow>
           </TableHeader>
           <TableBody>
