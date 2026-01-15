@@ -221,3 +221,44 @@ Thread: https://ampcode.com/threads/$AMP_CURRENT_THREAD_ID
 - Component successfully handles all state precedence: loading > error > empty > success
 ---
 
+## 2026-01-15 22:45 - US-008
+Thread: https://ampcode.com/threads/$AMP_CURRENT_THREAD_ID
+- Implemented Pagination Controls for customer search results
+- Created shadcn/ui Select component with all required subcomponents
+- Built PaginationControls component with:
+  - Current page, total pages, and total count display
+  - Previous/Next navigation buttons with proper disabled states
+  - Page size selector dropdown (10, 25, 50, 100 options)
+  - Responsive layout for mobile and desktop
+- Integrated pagination into home page (page.tsx):
+  - Added pagination state management (currentPage, pageSize, totalPages, totalCount)
+  - Implemented URL parameter management with Next.js useSearchParams
+  - Wrapped component in Suspense boundary for Next.js compliance
+  - Preserve search filters when changing pages or page size
+  - Reset to page 1 when new search or page size changes
+- Created comprehensive test suite with 97 tests total across all components
+- Achieved 94.94% statement coverage and 97.95% branch coverage
+- Build verified successfully in Docker
+- Frontend service running and accessible at http://localhost:3000
+
+**Files Created:**
+- src/frontend/src/components/ui/select.tsx (shadcn/ui Select component)
+- src/frontend/src/components/PaginationControls.tsx (Pagination component)
+- src/frontend/src/components/PaginationControls.test.tsx (Test suite with 30+ tests)
+
+**Files Modified:**
+- src/frontend/src/app/page.tsx (Integrated pagination, added Suspense boundary, URL management)
+
+**Learnings for future iterations:**
+- Next.js 14 requires useSearchParams() to be wrapped in a Suspense boundary to avoid prerendering errors
+- Split the component into HomeContent (uses useSearchParams) and Home (wraps in Suspense)
+- Suspense fallback provides loading state while params are being resolved
+- URL parameters should only include non-default values (page > 1, pageSize != 25) to keep URLs clean
+- router.push() updates URL without full page reload, perfect for client-side pagination
+- PaginationControls only shows when totalCount > 0 and there's no error
+- Page size changes should reset to page 1 to avoid showing empty results
+- The Select component uses Radix UI primitives: Root, Trigger, Content, Item, Value, etc.
+- Select dropdown requires proper z-index (z-50) and Portal to render above other content
+- All pagination state must be synchronized: local state, URL params, and API calls
+---
+
