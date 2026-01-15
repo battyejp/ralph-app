@@ -314,4 +314,148 @@ public class CustomersControllerTests
     }
 
     #endregion
+
+    #region GetCustomerById Tests
+
+    [Fact]
+    public async Task GetCustomerById_ExistingId_Returns200OkWithCustomer()
+    {
+        // Arrange
+        var customerId = Guid.NewGuid();
+        var customer = new Customer
+        {
+            Id = customerId,
+            Name = "John Doe",
+            Email = "john@example.com",
+            Phone = "+1234567890",
+            Address = "123 Main St",
+            CreatedAt = DateTime.UtcNow.AddDays(-5),
+            UpdatedAt = DateTime.UtcNow.AddDays(-1)
+        };
+
+        _mockRepository
+            .Setup(r => r.GetByIdAsync(customerId))
+            .ReturnsAsync(customer);
+
+        // Act
+        var result = await _controller.GetCustomerById(customerId);
+
+        // Assert
+        result.Result.Should().BeOfType<OkObjectResult>();
+        var okResult = result.Result as OkObjectResult;
+        okResult!.StatusCode.Should().Be(200);
+
+        var responseDto = okResult.Value as CustomerResponseDto;
+        responseDto.Should().NotBeNull();
+        responseDto!.Id.Should().Be(customer.Id);
+        responseDto.Name.Should().Be(customer.Name);
+        responseDto.Email.Should().Be(customer.Email);
+        responseDto.Phone.Should().Be(customer.Phone);
+        responseDto.Address.Should().Be(customer.Address);
+        responseDto.CreatedAt.Should().Be(customer.CreatedAt);
+        responseDto.UpdatedAt.Should().Be(customer.UpdatedAt);
+    }
+
+    [Fact]
+    public async Task GetCustomerById_NonExistingId_Returns404NotFound()
+    {
+        // Arrange
+        var nonExistingId = Guid.NewGuid();
+
+        _mockRepository
+            .Setup(r => r.GetByIdAsync(nonExistingId))
+            .ReturnsAsync((Customer?)null);
+
+        // Act
+        var result = await _controller.GetCustomerById(nonExistingId);
+
+        // Assert
+        result.Result.Should().BeOfType<NotFoundObjectResult>();
+        var notFoundResult = result.Result as NotFoundObjectResult;
+        notFoundResult!.StatusCode.Should().Be(404);
+    }
+
+    [Fact]
+    public async Task GetCustomerById_NonExistingId_ReturnsErrorMessage()
+    {
+        // Arrange
+        var nonExistingId = Guid.NewGuid();
+
+        _mockRepository
+            .Setup(r => r.GetByIdAsync(nonExistingId))
+            .ReturnsAsync((Customer?)null);
+
+        // Act
+        var result = await _controller.GetCustomerById(nonExistingId);
+
+        // Assert
+        var notFoundResult = result.Result as NotFoundObjectResult;
+        notFoundResult.Should().NotBeNull();
+        notFoundResult!.Value.Should().NotBeNull();
+
+        var errorResponse = notFoundResult.Value;
+        var messageProperty = errorResponse!.GetType().GetProperty("message");
+        messageProperty.Should().NotBeNull();
+        var message = messageProperty!.GetValue(errorResponse) as string;
+        message.Should().Contain(nonExistingId.ToString());
+        message.Should().Contain("not found");
+    }
+
+    [Fact]
+    public async Task GetCustomerById_CallsRepositoryGetByIdAsync()
+    {
+        // Arrange
+        var customerId = Guid.NewGuid();
+        var customer = new Customer
+        {
+            Id = customerId,
+            Name = "Test User",
+            Email = "test@example.com",
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+
+        _mockRepository
+            .Setup(r => r.GetByIdAsync(customerId))
+            .ReturnsAsync(customer);
+
+        // Act
+        await _controller.GetCustomerById(customerId);
+
+        // Assert
+        _mockRepository.Verify(r => r.GetByIdAsync(customerId), Times.Once);
+    }
+
+    [Fact]
+    public async Task GetCustomerById_WithMinimalData_ReturnsSuccessfully()
+    {
+        // Arrange
+        var customerId = Guid.NewGuid();
+        var customer = new Customer
+        {
+            Id = customerId,
+            Name = "Minimal User",
+            Email = "minimal@example.com",
+            Phone = null,
+            Address = null,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+
+        _mockRepository
+            .Setup(r => r.GetByIdAsync(customerId))
+            .ReturnsAsync(customer);
+
+        // Act
+        var result = await _controller.GetCustomerById(customerId);
+
+        // Assert
+        result.Result.Should().BeOfType<OkObjectResult>();
+        var okResult = result.Result as OkObjectResult;
+        var responseDto = okResult!.Value as CustomerResponseDto;
+        responseDto!.Phone.Should().BeNull();
+        responseDto.Address.Should().BeNull();
+    }
+
+    #endregion
 }

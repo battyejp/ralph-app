@@ -20,6 +20,27 @@ public class CustomersController : ControllerBase
     }
 
     /// <summary>
+    /// Gets a customer by ID
+    /// </summary>
+    /// <param name="id">Customer GUID identifier</param>
+    /// <returns>The customer if found</returns>
+    [HttpGet("{id}")]
+    [ProducesResponseType(typeof(CustomerResponseDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<CustomerResponseDto>> GetCustomerById(Guid id)
+    {
+        var customer = await _repository.GetByIdAsync(id);
+
+        if (customer == null)
+        {
+            return NotFound(new { message = $"Customer with ID {id} not found." });
+        }
+
+        var responseDto = _mapper.Map<CustomerResponseDto>(customer);
+        return Ok(responseDto);
+    }
+
+    /// <summary>
     /// Creates a new customer
     /// </summary>
     /// <param name="createDto">Customer creation data</param>
