@@ -139,3 +139,46 @@ Thread: https://ampcode.com/threads/$AMP_CURRENT_THREAD_ID
 - Test command: `docker run --rm frontend-dev npm test -- --coverage`
 - The backend requires database migrations to be applied before the Customers table exists (this will need to be addressed in future iterations)
 ---
+## 2026-01-15 19:45 - US-006
+Thread: https://ampcode.com/threads/$AMP_CURRENT_THREAD_ID
+- Implemented Advanced Search Form with multiple filter fields
+- Created shadcn/ui components: Button, Input, Label in src/components/ui/
+- Built SearchForm component with three search fields:
+  - General search (name/email)
+  - Email exact match
+  - Phone number search
+- Implemented useDebounce custom hook with 500ms delay for better UX
+- Added clear/reset filters functionality
+- Integrated SearchForm into home page with loading state
+- Created comprehensive test suite with 45 test cases
+- Achieved 96.42% branch coverage (exceeds 80% requirement)
+- Build verified successfully in Docker
+- Browser verification completed using dev-browser skill
+- All functionality working: form inputs, search button, clear button, responsive design
+
+**Files Created:**
+- src/frontend/src/components/ui/button.tsx (shadcn/ui Button component)
+- src/frontend/src/components/ui/input.tsx (shadcn/ui Input component)
+- src/frontend/src/components/ui/label.tsx (shadcn/ui Label component)
+- src/frontend/src/components/SearchForm.tsx (Main search form component)
+- src/frontend/src/components/SearchForm.test.tsx (Comprehensive test suite with 28 tests)
+- src/frontend/src/hooks/useDebounce.ts (Custom debounce hook)
+- src/frontend/src/hooks/useDebounce.test.ts (Hook tests with 17 test cases)
+
+**Files Modified:**
+- src/frontend/src/app/page.tsx (Integrated SearchForm with state management)
+
+**Learnings for future iterations:**
+- shadcn/ui components were created manually since npx is not available on host
+- Components use Radix UI primitives (@radix-ui/react-slot, @radix-ui/react-label)
+- Button component uses class-variance-authority for variant management
+- useDebounce hook is critical for good UX - prevents excessive API calls
+- SearchForm uses controlled inputs with React useState
+- Phone search is combined with general search parameter in API call
+- Form is responsive using Tailwind classes: grid-cols-1 md:grid-cols-3, flex-col sm:flex-row
+- Loading state disables all inputs and buttons during search
+- Tests mock useDebounce to make them synchronous for easier testing
+- Browser verification using dev-browser skill confirmed all interactive functionality
+- Next.js 14 'use client' directive required for components with useState
+---
+
