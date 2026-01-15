@@ -97,3 +97,31 @@ Files changed:
 - CustomersController maintains 100% line and branch coverage across all methods
 - All existing tests continue to pass - no regressions introduced
 ---
+
+## 01/15/2026 14:28 - US-006
+Thread: https://ampcode.com/threads/$AMP_CURRENT_THREAD_ID
+- Implemented GET /api/customers endpoint with pagination support
+- Created generic PaginatedResponseDto<T> for reusable pagination response structure
+- Endpoint accepts query parameters: page (default 1), pageSize (default 10, max 100)
+- Response includes: items, totalCount, page, pageSize, totalPages
+- Parameter validation normalizes invalid values (page < 1 normalizes to 1, pageSize > 100 caps at 100)
+- Returns empty items array when no customers exist (not 404)
+- Calculates skip value correctly as (page - 1) * pageSize
+- Calculates totalPages using Math.Ceiling for proper rounding
+- 11 comprehensive unit tests added covering all scenarios
+- All 104 tests passing with 100% controller coverage
+
+Files changed:
+- CustomerApi/DTOs/PaginatedResponseDto.cs (new generic DTO for paginated responses)
+- CustomerApi/Controllers/CustomersController.cs (added GetCustomers endpoint)
+- CustomerApi.Tests/Controllers/CustomersControllerTests.cs (added 11 comprehensive tests)
+
+**Learnings for future iterations:**
+- Generic DTOs like PaginatedResponseDto<T> enable code reuse across different entity types
+- Parameter normalization should happen before calculating skip to ensure consistency
+- The GetCustomers endpoint must be defined BEFORE GetCustomerById to avoid routing conflicts (specific routes before parameterized routes)
+- Repository GetAllAsync already exists with skip/take parameters, making pagination straightforward
+- When totalCount is 0, totalPages should also be 0 (not 1)
+- Moq's Setup allows matching specific parameter values to test different scenarios
+- AutoMapper can map IEnumerable<Customer> to IEnumerable<CustomerResponseDto> directly
+---
