@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(dotnet build:*)",
+      "Bash(powershell -NoProfile -Command \"Get-Content ralph.ps1 | Select-Object -Index \\(292..335\\)\")",
+      "Bash(powershell:*)"
+    ]
+  }
+}
