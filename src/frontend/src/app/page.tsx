@@ -1,26 +1,134 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { SearchForm } from '@/components/SearchForm';
 import CustomerResultsTable from '@/components/CustomerResultsTable';
+import { PaginationControls } from '@/components/PaginationControls';
 import { customerApi } from '@/lib/api/customerApi';
 import { ApiError } from '@/lib/api/customerApi';
 import type { Customer, CustomerSearchParams } from '@/lib/api/types';
 
-export default function Home() {
+function HomeContent() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
   const [isLoading, setIsLoading] = useState(false);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [hasSearched, setHasSearched] = useState(false);
 
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
+  const [totalPages, setTotalPages] = useState(0);
+  const [totalCount, setTotalCount] = useState(0);
+
+  // Search filters state
+  const [searchFilters, setSearchFilters] = useState<CustomerSearchParams>({});
+
+  // Initialize state from URL parameters
+  useEffect(() => {
+    const page = parseInt(searchParams.get('page') || '1', 10);
+    const size = parseInt(searchParams.get('pageSize') || '25', 10);
+
+    setCurrentPage(page);
+    setPageSize(size);
+  }, [searchParams]);
+
+  const updateURL = (params: CustomerSearchParams) => {
+    const urlParams = new URLSearchParams();
+
+    if (params.page && params.page > 1) {
+      urlParams.set('page', params.page.toString());
+    }
+    if (params.pageSize && params.pageSize !== 25) {
+      urlParams.set('pageSize', params.pageSize.toString());
+    }
+    if (params.search) {
+      urlParams.set('search', params.search);
+    }
+    if (params.email) {
+      urlParams.set('email', params.email);
+    }
+    if (params.sortBy) {
+      urlParams.set('sortBy', params.sortBy);
+    }
+    if (params.sortOrder) {
+      urlParams.set('sortOrder', params.sortOrder);
+    }
+
+    const queryString = urlParams.toString();
+    router.push(queryString ? `/?${queryString}` : '/');
+  };
+
   const handleSearch = async (params: CustomerSearchParams) => {
+    // Reset to page 1 when new search is triggered
+    const searchParams = { ...params, page: 1, pageSize };
+    setSearchFilters(params);
+    setCurrentPage(1);
     setIsLoading(true);
     setError(null);
     setHasSearched(true);
 
     try {
+      const response = await customerApi.searchCustomers(searchParams);
+      setCustomers(response.items);
+      setTotalPages(response.totalPages);
+      setTotalCount(response.totalCount);
+      updateURL(searchParams);
+    } catch (err) {
+      if (err instanceof ApiError) {
+        setError(err.message);
+      } else {
+        setError('An unexpected error occurred. Please try again.');
+      }
+      setCustomers([]);
+      setTotalPages(0);
+      setTotalCount(0);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handlePageChange = async (page: number) => {
+    const params = { ...searchFilters, page, pageSize };
+    setCurrentPage(page);
+    setIsLoading(true);
+    setError(null);
+
+    try {
       const response = await customerApi.searchCustomers(params);
       setCustomers(response.items);
+      setTotalPages(response.totalPages);
+      setTotalCount(response.totalCount);
+      updateURL(params);
+    } catch (err) {
+      if (err instanceof ApiError) {
+        setError(err.message);
+      } else {
+        setError('An unexpected error occurred. Please try again.');
+      }
+      setCustomers([]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handlePageSizeChange = async (newPageSize: number) => {
+    // Reset to page 1 when page size changes
+    const params = { ...searchFilters, page: 1, pageSize: newPageSize };
+    setPageSize(newPageSize);
+    setCurrentPage(1);
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const response = await customerApi.searchCustomers(params);
+      setCustomers(response.items);
+      setTotalPages(response.totalPages);
+      setTotalCount(response.totalCount);
+      updateURL(params);
     } catch (err) {
       if (err instanceof ApiError) {
         setError(err.message);
@@ -51,14 +159,36 @@ export default function Home() {
         <SearchForm onSearch={handleSearch} isLoading={isLoading} />
 
         {hasSearched && (
-          <CustomerResultsTable
-            customers={customers}
-            loading={isLoading}
-            error={error}
-            onCustomerClick={handleCustomerClick}
-          />
+          <>
+            <CustomerResultsTable
+              customers={customers}
+              loading={isLoading}
+              error={error}
+              onCustomerClick={handleCustomerClick}
+            />
+
+            {!error && totalCount > 0 && (
+              <PaginationControls
+                currentPage={currentPage}
+                totalPages={totalPages}
+                totalCount={totalCount}
+                pageSize={pageSize}
+                onPageChange={handlePageChange}
+                onPageSizeChange={handlePageSizeChange}
+                disabled={isLoading}
+              />
+            )}
+          </>
         )}
       </div>
     </main>
+  );
+}
+
+export default function Home() {
+  return (
+    <Suspense fallback={<div className="flex min-h-screen items-center justify-center">Loading...</div>}>
+      <HomeContent />
+    </Suspense>
   );
 }
