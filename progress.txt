@@ -1,0 +1,46 @@
+## Codebase Patterns
+- Project uses .NET 10 and MySQL with Pomelo.EntityFrameworkCore.MySql
+- Entity configuration is done using Fluent API in ApplicationDbContext.OnModelCreating
+- Test coverage is calculated per-class - focus on relevant code coverage not global coverage
+- EF Core migrations are in CustomerApi/Migrations/ directory
+- Docker Compose is used for MySQL database (port 3306)
+- Connection string uses format: Server=localhost;Port=3306;Database=customerdb;User=root;Password=password;
+- Environment variables are stored in .env file (not committed) with .env.example as template
+
+# Ralph Progress Log
+Started: 01/15/2026 11:20:59
+---
+
+## 01/15/2026 11:32 - US-002
+Thread: https://ampcode.com/threads/$AMP_CURRENT_THREAD_ID
+- Implemented Customer entity with all required fields (Id, Name, Email, Phone, Address, CreatedAt, UpdatedAt)
+- Configured entity with Fluent API for constraints:
+  - Name: required, max 100 chars
+  - Email: required, max 255 chars, unique index
+  - Phone: optional, max 20 chars
+  - Address: optional, max 500 chars
+- Created and applied initial EF Core migration to MySQL database
+- Updated projects to target .NET 10 (from .NET 9)
+- Replaced SQL Server provider with Pomelo.EntityFrameworkCore.MySql
+- Recreated docker-compose.yml and .env.example files
+
+Files changed:
+- CustomerApi/Models/Customer.cs (already existed with correct fields)
+- CustomerApi/Data/ApplicationDbContext.cs (added max length for Email)
+- CustomerApi/CustomerApi.csproj (updated to .NET 10, changed to MySQL provider)
+- CustomerApi/Program.cs (changed from UseSqlServer to UseMySql)
+- CustomerApi/appsettings.json (updated connection string for MySQL)
+- CustomerApi/Migrations/20260115112934_InitialCreate.cs (new migration)
+- CustomerApi.Tests/CustomerApi.Tests.csproj (updated to .NET 10)
+- docker-compose.yml (recreated)
+- .env.example (recreated)
+
+**Learnings for future iterations:**
+- The project previously had SQL Server migrations that needed to be removed before creating MySQL migrations
+- When switching database providers, old migrations cause build errors and must be deleted
+- .NET 10 requires dotnet-ef version 10.0.0 - version mismatches cause errors
+- Customer model and ApplicationDbContext both have 100% test coverage
+- Overall coverage appears low (39%) but includes untested boilerplate like Program.cs and WeatherForecast.cs
+- For story acceptance, focus on coverage of the specific code being implemented, not global coverage
+- The branch name in PRD must match exactly (ralph/customer-api not ralph/claude-customer-api)
+---
