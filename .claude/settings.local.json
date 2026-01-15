@@ -4,7 +4,9 @@
       "Bash(dotnet build:*)",
       "Bash(powershell -NoProfile -Command \"Get-Content ralph.ps1 | Select-Object -Index \\(292..335\\)\")",
       "Bash(powershell:*)",
-      "Bash(dir \"c:\\\\Users\\\\batty\\\\code\\\\github\\\\battyejp\\\\ralph-app\\\\logs\" /o-d)"
+      "Bash(dir \"c:\\\\Users\\\\batty\\\\code\\\\github\\\\battyejp\\\\ralph-app\\\\logs\" /o-d)",
+      "Skill(dev-browser)",
+      "Bash(npx tsx:*)"
     ]
   }
 }
