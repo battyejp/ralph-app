@@ -68,6 +68,21 @@
             "priority": 4,
             "passes": true,
             "notes": ""
+        },
+        {
+            "id": "US-005",
+            "title": "Implement GET customer by ID endpoint",
+            "description": "As an API consumer, I want to retrieve a specific customer by ID so that I can view their details.",
+            "acceptanceCriteria": [
+                "GET /api/customers/{id} endpoint returns customer by GUID ID",
+                "Returns 200 OK with CustomerResponseDto when found",
+                "Returns 404 Not Found with error message when customer doesn't exist",
+                "Code builds successfully",
+                "Tests pass with greater than 80% code coverage"
+            ],
+            "priority": 5,
+            "passes": true,
+            "notes": ""
         }
     ]
 }

@@ -73,3 +73,27 @@ Files changed:
 - FluentAssertions provides clean test assertions (Should().BeOfType, Should().NotBeNull, etc.)
 - Coverage report shows per-class coverage - CustomersController achieved 100% coverage
 ---
+
+## 01/15/2026 14:15 - US-005
+Thread: https://ampcode.com/threads/$AMP_CURRENT_THREAD_ID
+- Implemented GET /api/customers/{id} endpoint in CustomersController
+- Endpoint accepts GUID id parameter and returns customer details
+- Returns 200 OK with CustomerResponseDto when customer is found
+- Returns 404 Not Found with error message when customer doesn't exist
+- Uses existing ICustomerRepository.GetByIdAsync method
+- AutoMapper maps Customer entity to CustomerResponseDto
+- Comprehensive unit tests created with 100% method coverage
+- All 94 tests passing (5 new GET endpoint tests added)
+
+Files changed:
+- CustomerApi/Controllers/CustomersController.cs (added GetCustomerById method)
+- CustomerApi.Tests/Controllers/CustomersControllerTests.cs (added 5 comprehensive tests for GET endpoint)
+
+**Learnings for future iterations:**
+- GET endpoint uses route parameter {id} with [HttpGet("{id}")] attribute
+- Repository GetByIdAsync returns null when customer not found, which we check and return 404
+- NotFound() method can accept anonymous objects for error messages (new { message = "..." })
+- When testing anonymous objects in responses, use reflection to access properties (GetType().GetProperty())
+- CustomersController maintains 100% line and branch coverage across all methods
+- All existing tests continue to pass - no regressions introduced
+---
