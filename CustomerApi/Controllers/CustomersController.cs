@@ -179,4 +179,27 @@ public class CustomersController : ControllerBase
 
         return Ok(responseDto);
     }
+
+    /// <summary>
+    /// Deletes a customer by ID
+    /// </summary>
+    /// <param name="id">Customer GUID identifier</param>
+    /// <returns>No content on successful deletion</returns>
+    [HttpDelete("{id}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> DeleteCustomer(Guid id)
+    {
+        // Check if customer exists
+        var existingCustomer = await _repository.GetByIdAsync(id);
+        if (existingCustomer == null)
+        {
+            return NotFound(new { message = $"Customer with ID {id} not found." });
+        }
+
+        // Delete the customer
+        await _repository.DeleteAsync(existingCustomer);
+
+        return NoContent();
+    }
 }

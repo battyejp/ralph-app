@@ -1654,4 +1654,197 @@ public class CustomersControllerTests
     }
 
     #endregion
+
+    #region DeleteCustomer Tests
+
+    [Fact]
+    public async Task DeleteCustomer_ExistingId_Returns204NoContent()
+    {
+        // Arrange
+        var customerId = Guid.NewGuid();
+        var existingCustomer = new Customer
+        {
+            Id = customerId,
+            Name = "John Doe",
+            Email = "john@example.com",
+            CreatedAt = DateTime.UtcNow.AddDays(-10),
+            UpdatedAt = DateTime.UtcNow.AddDays(-5)
+        };
+
+        _mockRepository
+            .Setup(r => r.GetByIdAsync(customerId))
+            .ReturnsAsync(existingCustomer);
+
+        _mockRepository
+            .Setup(r => r.DeleteAsync(It.IsAny<Customer>()))
+            .Returns(Task.CompletedTask);
+
+        // Act
+        var result = await _controller.DeleteCustomer(customerId);
+
+        // Assert
+        result.Should().BeOfType<NoContentResult>();
+        var noContentResult = result as NoContentResult;
+        noContentResult!.StatusCode.Should().Be(204);
+    }
+
+    [Fact]
+    public async Task DeleteCustomer_NonExistingId_Returns404NotFound()
+    {
+        // Arrange
+        var nonExistingId = Guid.NewGuid();
+
+        _mockRepository
+            .Setup(r => r.GetByIdAsync(nonExistingId))
+            .ReturnsAsync((Customer?)null);
+
+        // Act
+        var result = await _controller.DeleteCustomer(nonExistingId);
+
+        // Assert
+        result.Should().BeOfType<NotFoundObjectResult>();
+        var notFoundResult = result as NotFoundObjectResult;
+        notFoundResult!.StatusCode.Should().Be(404);
+    }
+
+    [Fact]
+    public async Task DeleteCustomer_NonExistingId_ReturnsErrorMessage()
+    {
+        // Arrange
+        var nonExistingId = Guid.NewGuid();
+
+        _mockRepository
+            .Setup(r => r.GetByIdAsync(nonExistingId))
+            .ReturnsAsync((Customer?)null);
+
+        // Act
+        var result = await _controller.DeleteCustomer(nonExistingId);
+
+        // Assert
+        var notFoundResult = result as NotFoundObjectResult;
+        notFoundResult.Should().NotBeNull();
+        notFoundResult!.Value.Should().NotBeNull();
+
+        var errorResponse = notFoundResult.Value;
+        var messageProperty = errorResponse!.GetType().GetProperty("message");
+        messageProperty.Should().NotBeNull();
+
+        var message = messageProperty!.GetValue(errorResponse) as string;
+        message.Should().Contain(nonExistingId.ToString());
+        message.Should().Contain("not found");
+    }
+
+    [Fact]
+    public async Task DeleteCustomer_CallsGetByIdAsync()
+    {
+        // Arrange
+        var customerId = Guid.NewGuid();
+        var existingCustomer = new Customer
+        {
+            Id = customerId,
+            Name = "Jane Doe",
+            Email = "jane@example.com",
+            CreatedAt = DateTime.UtcNow.AddDays(-10),
+            UpdatedAt = DateTime.UtcNow.AddDays(-5)
+        };
+
+        _mockRepository
+            .Setup(r => r.GetByIdAsync(customerId))
+            .ReturnsAsync(existingCustomer);
+
+        _mockRepository
+            .Setup(r => r.DeleteAsync(It.IsAny<Customer>()))
+            .Returns(Task.CompletedTask);
+
+        // Act
+        await _controller.DeleteCustomer(customerId);
+
+        // Assert
+        _mockRepository.Verify(r => r.GetByIdAsync(customerId), Times.Once);
+    }
+
+    [Fact]
+    public async Task DeleteCustomer_CallsDeleteAsync()
+    {
+        // Arrange
+        var customerId = Guid.NewGuid();
+        var existingCustomer = new Customer
+        {
+            Id = customerId,
+            Name = "Test Customer",
+            Email = "test@example.com",
+            CreatedAt = DateTime.UtcNow.AddDays(-10),
+            UpdatedAt = DateTime.UtcNow.AddDays(-5)
+        };
+
+        _mockRepository
+            .Setup(r => r.GetByIdAsync(customerId))
+            .ReturnsAsync(existingCustomer);
+
+        _mockRepository
+            .Setup(r => r.DeleteAsync(It.IsAny<Customer>()))
+            .Returns(Task.CompletedTask);
+
+        // Act
+        await _controller.DeleteCustomer(customerId);
+
+        // Assert
+        _mockRepository.Verify(r => r.DeleteAsync(It.Is<Customer>(c => c.Id == customerId)), Times.Once);
+    }
+
+    [Fact]
+    public async Task DeleteCustomer_DoesNotCallDeleteAsync_WhenCustomerNotFound()
+    {
+        // Arrange
+        var nonExistingId = Guid.NewGuid();
+
+        _mockRepository
+            .Setup(r => r.GetByIdAsync(nonExistingId))
+            .ReturnsAsync((Customer?)null);
+
+        // Act
+        await _controller.DeleteCustomer(nonExistingId);
+
+        // Assert
+        _mockRepository.Verify(r => r.DeleteAsync(It.IsAny<Customer>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task DeleteCustomer_DeletesCorrectCustomer()
+    {
+        // Arrange
+        var customerId = Guid.NewGuid();
+        var existingCustomer = new Customer
+        {
+            Id = customerId,
+            Name = "Customer to Delete",
+            Email = "delete@example.com",
+            Phone = "555-1234",
+            Address = "123 Delete St",
+            CreatedAt = DateTime.UtcNow.AddDays(-10),
+            UpdatedAt = DateTime.UtcNow.AddDays(-5)
+        };
+
+        Customer? deletedCustomer = null;
+
+        _mockRepository
+            .Setup(r => r.GetByIdAsync(customerId))
+            .ReturnsAsync(existingCustomer);
+
+        _mockRepository
+            .Setup(r => r.DeleteAsync(It.IsAny<Customer>()))
+            .Callback<Customer>(c => deletedCustomer = c)
+            .Returns(Task.CompletedTask);
+
+        // Act
+        await _controller.DeleteCustomer(customerId);
+
+        // Assert
+        deletedCustomer.Should().NotBeNull();
+        deletedCustomer!.Id.Should().Be(customerId);
+        deletedCustomer.Name.Should().Be(existingCustomer.Name);
+        deletedCustomer.Email.Should().Be(existingCustomer.Email);
+    }
+
+    #endregion
 }
