@@ -262,3 +262,38 @@ Thread: https://ampcode.com/threads/$AMP_CURRENT_THREAD_ID
 - All pagination state must be synchronized: local state, URL params, and API calls
 ---
 
+## 2026-01-15 23:45 - US-009
+Thread: https://ampcode.com/threads/$AMP_CURRENT_THREAD_ID
+- Implemented Column Sorting for customer search results
+- Created SortableTableHeader component with visual sort indicators (up/down arrows)
+- Added sortable columns: Name, Email, Created At (Phone is not sortable)
+- Implemented sort state management in page.tsx:
+  - Added sortBy and sortOrder state variables
+  - Created handleSortChange function with toggle logic (asc <-> desc)
+  - Integrated sort parameters into all API calls (search, pagination, page size change)
+  - URL parameters updated with sortBy and sortOrder
+- Sort indicators show active column with primary color, inactive columns muted
+- Sort state preserved across pagination, page size changes, and new searches
+- Comprehensive test suite added with 33+ new tests for sorting functionality
+- All 118 tests passing with 95.05% statement coverage
+- Build verified successfully in Docker
+- Frontend service running and accessible
+
+**Files Modified:**
+- src/frontend/src/components/CustomerResultsTable.tsx (Added SortableTableHeader component, updated props)
+- src/frontend/src/components/CustomerResultsTable.test.tsx (Added comprehensive sorting tests)
+- src/frontend/src/app/page.tsx (Added sort state, handleSortChange, integrated sort into all API calls)
+
+**Learnings for future iterations:**
+- SortableTableHeader is a reusable component that renders clickable column headers with sort indicators
+- Sort indicators use SVG arrows with conditional styling: text-primary when active, text-muted-foreground/30 when inactive
+- handleSortChange toggles between asc/desc when clicking the same column, defaults to asc for new column
+- Sort parameters must be included in all API calls: handleSearch, handlePageChange, handlePageSizeChange
+- URL state management via updateURL ensures browser back/forward works with sorting
+- Phone column is intentionally not sortable (backend doesn't support it)
+- Table headers use cursor-pointer and select-none classes for better UX
+- Hover effect on sortable headers: hover:bg-muted/50
+- All sort state is synchronized between: local state, URL params, and API calls
+- Tests verify: clickability, sort indicators, click handlers, state combinations, and interaction with loading/error/empty states
+---
+

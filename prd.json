@@ -171,8 +171,8 @@
         "Verify in browser using dev-browser skill"
       ],
       "priority": 9,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Implemented sortable column headers with visual indicators. All tests passing (118 tests, 95.05% coverage). Sort state preserved in URL and across pagination/filtering."
     },
     {
       "id": "US-010",
