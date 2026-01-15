@@ -113,7 +113,7 @@ for ($i = 1; $i -le $MaxIterations; $i++) {
 
     try {
         # Pipe prompt to claude, display it, and capture to log file
-        $Output = $PromptContent | claude --dangerously-skip-permissions 2>&1 | ForEach-Object {
+        $Output = $PromptContent | claude --verbose --dangerously-skip-permissions 2>&1 | ForEach-Object {
             $line = $_
             Write-Host $line
             Add-Content -Path $LogFile -Value $line
