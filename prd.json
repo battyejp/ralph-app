@@ -35,6 +35,21 @@
       "priority": 2,
       "passes": true,
       "notes": ""
+    },
+    {
+      "id": "US-003",
+      "title": "Create Customer DTOs and AutoMapper configuration",
+      "description": "As a developer, I need DTOs to separate API contracts from entity models so that the API has clean request/response models.",
+      "acceptanceCriteria": [
+        "Create CreateCustomerDto with fields: Name (required), Email (required, email format validation), Phone (optional), Address (optional)",
+        "Create UpdateCustomerDto with same fields as CreateCustomerDto",
+        "Create CustomerResponseDto with all Customer fields including Id, CreatedAt, UpdatedAt",
+        "Configure AutoMapper profiles for entity-to-DTO mapping",
+        "Code builds successfully",
+        "Tests pass with greater than 80% code coverage"
+      ],
+      "priority": 3,
+      "passes": false,
+      "notes": ""
     }
-  ]
 }
