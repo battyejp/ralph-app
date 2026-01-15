@@ -135,4 +135,48 @@ public class CustomersController : ControllerBase
             new { id = createdCustomer.Id },
             responseDto);
     }
+
+    /// <summary>
+    /// Updates an existing customer
+    /// </summary>
+    /// <param name="id">Customer GUID identifier</param>
+    /// <param name="updateDto">Customer update data</param>
+    /// <returns>The updated customer</returns>
+    [HttpPut("{id}")]
+    [ProducesResponseType(typeof(CustomerResponseDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<CustomerResponseDto>> UpdateCustomer(Guid id, [FromBody] UpdateCustomerDto updateDto)
+    {
+        if (!ModelState.IsValid)
+        {
+            return BadRequest(ModelState);
+        }
+
+        // Check if customer exists
+        var existingCustomer = await _repository.GetByIdAsync(id);
+        if (existingCustomer == null)
+        {
+            return NotFound(new { message = $"Customer with ID {id} not found." });
+        }
+
+        // Store the original CreatedAt timestamp
+        var originalCreatedAt = existingCustomer.CreatedAt;
+
+        // Map update DTO to entity
+        _mapper.Map(updateDto, existingCustomer);
+
+        // Preserve CreatedAt and update UpdatedAt
+        existingCustomer.Id = id;
+        existingCustomer.CreatedAt = originalCreatedAt;
+        existingCustomer.UpdatedAt = DateTime.UtcNow;
+
+        // Save to database
+        var updatedCustomer = await _repository.UpdateAsync(existingCustomer);
+
+        // Map to response DTO
+        var responseDto = _mapper.Map<CustomerResponseDto>(updatedCustomer);
+
+        return Ok(responseDto);
+    }
 }

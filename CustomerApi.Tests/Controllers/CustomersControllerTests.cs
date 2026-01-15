@@ -1261,4 +1261,397 @@ public class CustomersControllerTests
     }
 
     #endregion
+
+    #region UpdateCustomer Tests
+
+    [Fact]
+    public async Task UpdateCustomer_ValidDto_Returns200OkWithUpdatedCustomer()
+    {
+        // Arrange
+        var customerId = Guid.NewGuid();
+        var existingCustomer = new Customer
+        {
+            Id = customerId,
+            Name = "Old Name",
+            Email = "old@example.com",
+            Phone = "111111111",
+            Address = "Old Address",
+            CreatedAt = DateTime.UtcNow.AddDays(-10),
+            UpdatedAt = DateTime.UtcNow.AddDays(-5)
+        };
+
+        var updateDto = new UpdateCustomerDto
+        {
+            Name = "New Name",
+            Email = "new@example.com",
+            Phone = "222222222",
+            Address = "New Address"
+        };
+
+        _mockRepository
+            .Setup(r => r.GetByIdAsync(customerId))
+            .ReturnsAsync(existingCustomer);
+
+        _mockRepository
+            .Setup(r => r.UpdateAsync(It.IsAny<Customer>()))
+            .ReturnsAsync((Customer c) => c);
+
+        // Act
+        var result = await _controller.UpdateCustomer(customerId, updateDto);
+
+        // Assert
+        result.Result.Should().BeOfType<OkObjectResult>();
+        var okResult = result.Result as OkObjectResult;
+        okResult!.StatusCode.Should().Be(200);
+
+        var responseDto = okResult.Value as CustomerResponseDto;
+        responseDto.Should().NotBeNull();
+        responseDto!.Id.Should().Be(customerId);
+        responseDto.Name.Should().Be(updateDto.Name);
+        responseDto.Email.Should().Be(updateDto.Email);
+        responseDto.Phone.Should().Be(updateDto.Phone);
+        responseDto.Address.Should().Be(updateDto.Address);
+    }
+
+    [Fact]
+    public async Task UpdateCustomer_NonExistingId_Returns404NotFound()
+    {
+        // Arrange
+        var nonExistingId = Guid.NewGuid();
+        var updateDto = new UpdateCustomerDto
+        {
+            Name = "Test Name",
+            Email = "test@example.com"
+        };
+
+        _mockRepository
+            .Setup(r => r.GetByIdAsync(nonExistingId))
+            .ReturnsAsync((Customer?)null);
+
+        // Act
+        var result = await _controller.UpdateCustomer(nonExistingId, updateDto);
+
+        // Assert
+        result.Result.Should().BeOfType<NotFoundObjectResult>();
+        var notFoundResult = result.Result as NotFoundObjectResult;
+        notFoundResult!.StatusCode.Should().Be(404);
+    }
+
+    [Fact]
+    public async Task UpdateCustomer_NonExistingId_ReturnsErrorMessage()
+    {
+        // Arrange
+        var nonExistingId = Guid.NewGuid();
+        var updateDto = new UpdateCustomerDto
+        {
+            Name = "Test Name",
+            Email = "test@example.com"
+        };
+
+        _mockRepository
+            .Setup(r => r.GetByIdAsync(nonExistingId))
+            .ReturnsAsync((Customer?)null);
+
+        // Act
+        var result = await _controller.UpdateCustomer(nonExistingId, updateDto);
+
+        // Assert
+        var notFoundResult = result.Result as NotFoundObjectResult;
+        notFoundResult.Should().NotBeNull();
+        notFoundResult!.Value.Should().NotBeNull();
+
+        var errorResponse = notFoundResult.Value;
+        var messageProperty = errorResponse!.GetType().GetProperty("message");
+        messageProperty.Should().NotBeNull();
+        var message = messageProperty!.GetValue(errorResponse) as string;
+        message.Should().Contain(nonExistingId.ToString());
+        message.Should().Contain("not found");
+    }
+
+    [Fact]
+    public async Task UpdateCustomer_InvalidModelState_Returns400BadRequest()
+    {
+        // Arrange
+        var customerId = Guid.NewGuid();
+        var updateDto = new UpdateCustomerDto
+        {
+            Name = "Test Name",
+            Email = "invalid-email" // Invalid email format
+        };
+
+        _controller.ModelState.AddModelError("Email", "Invalid email format");
+
+        // Act
+        var result = await _controller.UpdateCustomer(customerId, updateDto);
+
+        // Assert
+        result.Result.Should().BeOfType<BadRequestObjectResult>();
+        var badRequestResult = result.Result as BadRequestObjectResult;
+        badRequestResult!.StatusCode.Should().Be(400);
+    }
+
+    [Fact]
+    public async Task UpdateCustomer_InvalidModelState_DoesNotCallRepository()
+    {
+        // Arrange
+        var customerId = Guid.NewGuid();
+        var updateDto = new UpdateCustomerDto
+        {
+            Name = "",
+            Email = "test@example.com"
+        };
+
+        _controller.ModelState.AddModelError("Name", "Name is required");
+
+        // Act
+        await _controller.UpdateCustomer(customerId, updateDto);
+
+        // Assert
+        _mockRepository.Verify(r => r.GetByIdAsync(It.IsAny<Guid>()), Times.Never);
+        _mockRepository.Verify(r => r.UpdateAsync(It.IsAny<Customer>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task UpdateCustomer_PreservesCreatedAtTimestamp()
+    {
+        // Arrange
+        var customerId = Guid.NewGuid();
+        var originalCreatedAt = DateTime.UtcNow.AddDays(-10);
+        var existingCustomer = new Customer
+        {
+            Id = customerId,
+            Name = "Old Name",
+            Email = "old@example.com",
+            CreatedAt = originalCreatedAt,
+            UpdatedAt = DateTime.UtcNow.AddDays(-5)
+        };
+
+        var updateDto = new UpdateCustomerDto
+        {
+            Name = "New Name",
+            Email = "new@example.com"
+        };
+
+        Customer capturedCustomer = null!;
+        _mockRepository
+            .Setup(r => r.GetByIdAsync(customerId))
+            .ReturnsAsync(existingCustomer);
+
+        _mockRepository
+            .Setup(r => r.UpdateAsync(It.IsAny<Customer>()))
+            .Callback<Customer>(c => capturedCustomer = c)
+            .ReturnsAsync((Customer c) => c);
+
+        // Act
+        await _controller.UpdateCustomer(customerId, updateDto);
+
+        // Assert
+        capturedCustomer.Should().NotBeNull();
+        capturedCustomer.CreatedAt.Should().Be(originalCreatedAt);
+    }
+
+    [Fact]
+    public async Task UpdateCustomer_UpdatesUpdatedAtTimestamp()
+    {
+        // Arrange
+        var customerId = Guid.NewGuid();
+        var existingCustomer = new Customer
+        {
+            Id = customerId,
+            Name = "Old Name",
+            Email = "old@example.com",
+            CreatedAt = DateTime.UtcNow.AddDays(-10),
+            UpdatedAt = DateTime.UtcNow.AddDays(-5)
+        };
+
+        var updateDto = new UpdateCustomerDto
+        {
+            Name = "New Name",
+            Email = "new@example.com"
+        };
+
+        Customer capturedCustomer = null!;
+        _mockRepository
+            .Setup(r => r.GetByIdAsync(customerId))
+            .ReturnsAsync(existingCustomer);
+
+        _mockRepository
+            .Setup(r => r.UpdateAsync(It.IsAny<Customer>()))
+            .Callback<Customer>(c => capturedCustomer = c)
+            .ReturnsAsync((Customer c) => c);
+
+        // Act
+        var beforeCall = DateTime.UtcNow;
+        await _controller.UpdateCustomer(customerId, updateDto);
+        var afterCall = DateTime.UtcNow;
+
+        // Assert
+        capturedCustomer.Should().NotBeNull();
+        capturedCustomer.UpdatedAt.Should().BeOnOrAfter(beforeCall).And.BeOnOrBefore(afterCall);
+        capturedCustomer.UpdatedAt.Kind.Should().Be(DateTimeKind.Utc);
+    }
+
+    [Fact]
+    public async Task UpdateCustomer_CallsRepositoryUpdateAsync()
+    {
+        // Arrange
+        var customerId = Guid.NewGuid();
+        var existingCustomer = new Customer
+        {
+            Id = customerId,
+            Name = "Old Name",
+            Email = "old@example.com",
+            CreatedAt = DateTime.UtcNow.AddDays(-10),
+            UpdatedAt = DateTime.UtcNow.AddDays(-5)
+        };
+
+        var updateDto = new UpdateCustomerDto
+        {
+            Name = "New Name",
+            Email = "new@example.com",
+            Phone = "1234567890",
+            Address = "New Address"
+        };
+
+        _mockRepository
+            .Setup(r => r.GetByIdAsync(customerId))
+            .ReturnsAsync(existingCustomer);
+
+        _mockRepository
+            .Setup(r => r.UpdateAsync(It.IsAny<Customer>()))
+            .ReturnsAsync((Customer c) => c);
+
+        // Act
+        await _controller.UpdateCustomer(customerId, updateDto);
+
+        // Assert
+        _mockRepository.Verify(
+            r => r.UpdateAsync(It.Is<Customer>(c =>
+                c.Id == customerId &&
+                c.Name == updateDto.Name &&
+                c.Email == updateDto.Email &&
+                c.Phone == updateDto.Phone &&
+                c.Address == updateDto.Address)),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task UpdateCustomer_WithOptionalFieldsNull_UpdatesSuccessfully()
+    {
+        // Arrange
+        var customerId = Guid.NewGuid();
+        var existingCustomer = new Customer
+        {
+            Id = customerId,
+            Name = "Old Name",
+            Email = "old@example.com",
+            Phone = "1111111111",
+            Address = "Old Address",
+            CreatedAt = DateTime.UtcNow.AddDays(-10),
+            UpdatedAt = DateTime.UtcNow.AddDays(-5)
+        };
+
+        var updateDto = new UpdateCustomerDto
+        {
+            Name = "New Name",
+            Email = "new@example.com",
+            Phone = null,
+            Address = null
+        };
+
+        _mockRepository
+            .Setup(r => r.GetByIdAsync(customerId))
+            .ReturnsAsync(existingCustomer);
+
+        _mockRepository
+            .Setup(r => r.UpdateAsync(It.IsAny<Customer>()))
+            .ReturnsAsync((Customer c) => c);
+
+        // Act
+        var result = await _controller.UpdateCustomer(customerId, updateDto);
+
+        // Assert
+        result.Result.Should().BeOfType<OkObjectResult>();
+        var okResult = result.Result as OkObjectResult;
+        var responseDto = okResult!.Value as CustomerResponseDto;
+        responseDto!.Phone.Should().BeNull();
+        responseDto.Address.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task UpdateCustomer_MaxLengthFields_UpdatesSuccessfully()
+    {
+        // Arrange
+        var customerId = Guid.NewGuid();
+        var existingCustomer = new Customer
+        {
+            Id = customerId,
+            Name = "Old Name",
+            Email = "old@example.com",
+            CreatedAt = DateTime.UtcNow.AddDays(-10),
+            UpdatedAt = DateTime.UtcNow.AddDays(-5)
+        };
+
+        var updateDto = new UpdateCustomerDto
+        {
+            Name = new string('A', 100), // Max 100 chars
+            Email = new string('a', 243) + "@example.com", // Max 255 chars
+            Phone = new string('1', 20), // Max 20 chars
+            Address = new string('B', 500) // Max 500 chars
+        };
+
+        _mockRepository
+            .Setup(r => r.GetByIdAsync(customerId))
+            .ReturnsAsync(existingCustomer);
+
+        _mockRepository
+            .Setup(r => r.UpdateAsync(It.IsAny<Customer>()))
+            .ReturnsAsync((Customer c) => c);
+
+        // Act
+        var result = await _controller.UpdateCustomer(customerId, updateDto);
+
+        // Assert
+        result.Result.Should().BeOfType<OkObjectResult>();
+    }
+
+    [Fact]
+    public async Task UpdateCustomer_PreservesIdInEntity()
+    {
+        // Arrange
+        var customerId = Guid.NewGuid();
+        var existingCustomer = new Customer
+        {
+            Id = customerId,
+            Name = "Old Name",
+            Email = "old@example.com",
+            CreatedAt = DateTime.UtcNow.AddDays(-10),
+            UpdatedAt = DateTime.UtcNow.AddDays(-5)
+        };
+
+        var updateDto = new UpdateCustomerDto
+        {
+            Name = "New Name",
+            Email = "new@example.com"
+        };
+
+        Customer capturedCustomer = null!;
+        _mockRepository
+            .Setup(r => r.GetByIdAsync(customerId))
+            .ReturnsAsync(existingCustomer);
+
+        _mockRepository
+            .Setup(r => r.UpdateAsync(It.IsAny<Customer>()))
+            .Callback<Customer>(c => capturedCustomer = c)
+            .ReturnsAsync((Customer c) => c);
+
+        // Act
+        await _controller.UpdateCustomer(customerId, updateDto);
+
+        // Assert
+        capturedCustomer.Should().NotBeNull();
+        capturedCustomer.Id.Should().Be(customerId);
+    }
+
+    #endregion
 }
