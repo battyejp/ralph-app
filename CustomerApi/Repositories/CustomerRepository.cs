@@ -29,6 +29,7 @@ public class CustomerRepository : ICustomerRepository
         int skip,
         int take,
         string? searchTerm = null,
+        string? emailFilter = null,
         DateTime? dateFrom = null,
         DateTime? dateTo = null)
     {
@@ -41,6 +42,12 @@ public class CustomerRepository : ICustomerRepository
             query = query.Where(c =>
                 c.Name.ToLower().Contains(search) ||
                 c.Email.ToLower().Contains(search));
+        }
+
+        // Apply exact email filter
+        if (!string.IsNullOrWhiteSpace(emailFilter))
+        {
+            query = query.Where(c => c.Email == emailFilter);
         }
 
         // Apply date range filter on CreatedAt

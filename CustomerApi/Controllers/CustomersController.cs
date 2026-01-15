@@ -24,12 +24,16 @@ public class CustomersController : ControllerBase
     /// </summary>
     /// <param name="page">Page number (default 1, minimum 1)</param>
     /// <param name="pageSize">Number of items per page (default 10, max 100)</param>
+    /// <param name="search">Search term for Name and Email (case-insensitive)</param>
+    /// <param name="email">Exact match filter for Email</param>
     /// <returns>Paginated list of customers</returns>
     [HttpGet]
     [ProducesResponseType(typeof(PaginatedResponseDto<CustomerResponseDto>), StatusCodes.Status200OK)]
     public async Task<ActionResult<PaginatedResponseDto<CustomerResponseDto>>> GetCustomers(
         [FromQuery] int page = 1,
-        [FromQuery] int pageSize = 10)
+        [FromQuery] int pageSize = 10,
+        [FromQuery] string? search = null,
+        [FromQuery] string? email = null)
     {
         // Validate and normalize parameters
         if (page < 1)
@@ -49,8 +53,8 @@ public class CustomersController : ControllerBase
         // Calculate skip
         int skip = (page - 1) * pageSize;
 
-        // Get paginated data from repository
-        var (customers, totalCount) = await _repository.GetAllAsync(skip, pageSize);
+        // Get paginated data from repository with filters
+        var (customers, totalCount) = await _repository.GetAllAsync(skip, pageSize, search, email);
 
         // Map to response DTOs
         var customerDtos = _mapper.Map<IEnumerable<CustomerResponseDto>>(customers);

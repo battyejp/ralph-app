@@ -486,7 +486,7 @@ public class CustomersControllerTests
         };
 
         _mockRepository
-            .Setup(r => r.GetAllAsync(0, 10, null, null, null))
+            .Setup(r => r.GetAllAsync(0, 10, null, null, null, null))
             .ReturnsAsync((customers, 2));
 
         // Act
@@ -523,7 +523,7 @@ public class CustomersControllerTests
         };
 
         _mockRepository
-            .Setup(r => r.GetAllAsync(10, 5, null, null, null))
+            .Setup(r => r.GetAllAsync(10, 5, null, null, null, null))
             .ReturnsAsync((customers, 15));
 
         // Act
@@ -548,7 +548,7 @@ public class CustomersControllerTests
         // Arrange
         var customers = new List<Customer>();
         _mockRepository
-            .Setup(r => r.GetAllAsync(0, 100, null, null, null))
+            .Setup(r => r.GetAllAsync(0, 100, null, null, null, null))
             .ReturnsAsync((customers, 0));
 
         // Act
@@ -559,7 +559,7 @@ public class CustomersControllerTests
         var response = okResult!.Value as PaginatedResponseDto<CustomerResponseDto>;
         response!.PageSize.Should().Be(100);
 
-        _mockRepository.Verify(r => r.GetAllAsync(0, 100, null, null, null), Times.Once);
+        _mockRepository.Verify(r => r.GetAllAsync(0, 100, null, null, null, null), Times.Once);
     }
 
     [Fact]
@@ -579,7 +579,7 @@ public class CustomersControllerTests
         var response = okResult!.Value as PaginatedResponseDto<CustomerResponseDto>;
         response!.Page.Should().Be(1);
 
-        _mockRepository.Verify(r => r.GetAllAsync(0, 10, null, null, null), Times.Once);
+        _mockRepository.Verify(r => r.GetAllAsync(0, 10, null, null, null, null), Times.Once);
     }
 
     [Fact]
@@ -599,7 +599,7 @@ public class CustomersControllerTests
         var response = okResult!.Value as PaginatedResponseDto<CustomerResponseDto>;
         response!.PageSize.Should().Be(10);
 
-        _mockRepository.Verify(r => r.GetAllAsync(0, 10, null, null, null), Times.Once);
+        _mockRepository.Verify(r => r.GetAllAsync(0, 10, null, null, null, null), Times.Once);
     }
 
     [Fact]
@@ -631,14 +631,14 @@ public class CustomersControllerTests
         // Arrange
         var customers = new List<Customer>();
         _mockRepository
-            .Setup(r => r.GetAllAsync(40, 20, null, null, null))
+            .Setup(r => r.GetAllAsync(40, 20, null, null, null, null))
             .ReturnsAsync((customers, 100));
 
         // Act
         await _controller.GetCustomers(page: 3, pageSize: 20);
 
         // Assert - verify skip is (page - 1) * pageSize = 2 * 20 = 40
-        _mockRepository.Verify(r => r.GetAllAsync(40, 20, null, null, null), Times.Once);
+        _mockRepository.Verify(r => r.GetAllAsync(40, 20, null, null, null, null), Times.Once);
     }
 
     [Fact]
@@ -675,7 +675,7 @@ public class CustomersControllerTests
         };
 
         _mockRepository
-            .Setup(r => r.GetAllAsync(0, 10, null, null, null))
+            .Setup(r => r.GetAllAsync(0, 10, null, null, null, null))
             .ReturnsAsync((new List<Customer> { customer }, 1));
 
         // Act
@@ -709,7 +709,7 @@ public class CustomersControllerTests
         }).ToList();
 
         _mockRepository
-            .Setup(r => r.GetAllAsync(0, 10, null, null, null))
+            .Setup(r => r.GetAllAsync(0, 10, null, null, null, null))
             .ReturnsAsync((customers, 50));
 
         // Act
@@ -722,6 +722,248 @@ public class CustomersControllerTests
         response!.Items.Should().HaveCount(10);
         response.TotalCount.Should().Be(50);
         response.TotalPages.Should().Be(5);
+    }
+
+    #endregion
+
+    #region GetCustomers Filtering Tests
+
+    [Fact]
+    public async Task GetCustomers_WithSearchParameter_PassesSearchTermToRepository()
+    {
+        // Arrange
+        var searchTerm = "john";
+        var customers = new List<Customer>
+        {
+            new Customer
+            {
+                Id = Guid.NewGuid(),
+                Name = "John Doe",
+                Email = "john@example.com",
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            }
+        };
+
+        _mockRepository
+            .Setup(r => r.GetAllAsync(0, 10, searchTerm, null, null, null))
+            .ReturnsAsync((customers, 1));
+
+        // Act
+        var result = await _controller.GetCustomers(search: searchTerm);
+
+        // Assert
+        result.Result.Should().BeOfType<OkObjectResult>();
+        var okResult = result.Result as OkObjectResult;
+        var response = okResult!.Value as PaginatedResponseDto<CustomerResponseDto>;
+
+        response.Should().NotBeNull();
+        response!.Items.Should().HaveCount(1);
+        response.TotalCount.Should().Be(1);
+
+        _mockRepository.Verify(r => r.GetAllAsync(0, 10, searchTerm, null, null, null), Times.Once);
+    }
+
+    [Fact]
+    public async Task GetCustomers_WithEmailFilter_PassesEmailToRepository()
+    {
+        // Arrange
+        var emailFilter = "specific@example.com";
+        var customers = new List<Customer>
+        {
+            new Customer
+            {
+                Id = Guid.NewGuid(),
+                Name = "Specific User",
+                Email = emailFilter,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            }
+        };
+
+        _mockRepository
+            .Setup(r => r.GetAllAsync(0, 10, null, emailFilter, null, null))
+            .ReturnsAsync((customers, 1));
+
+        // Act
+        var result = await _controller.GetCustomers(email: emailFilter);
+
+        // Assert
+        result.Result.Should().BeOfType<OkObjectResult>();
+        var okResult = result.Result as OkObjectResult;
+        var response = okResult!.Value as PaginatedResponseDto<CustomerResponseDto>;
+
+        response.Should().NotBeNull();
+        response!.Items.Should().HaveCount(1);
+        response.TotalCount.Should().Be(1);
+
+        _mockRepository.Verify(r => r.GetAllAsync(0, 10, null, emailFilter, null, null), Times.Once);
+    }
+
+    [Fact]
+    public async Task GetCustomers_WithSearchAndEmail_PassesBothToRepository()
+    {
+        // Arrange
+        var searchTerm = "john";
+        var emailFilter = "john@example.com";
+        var customers = new List<Customer>
+        {
+            new Customer
+            {
+                Id = Guid.NewGuid(),
+                Name = "John Doe",
+                Email = emailFilter,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            }
+        };
+
+        _mockRepository
+            .Setup(r => r.GetAllAsync(0, 10, searchTerm, emailFilter, null, null))
+            .ReturnsAsync((customers, 1));
+
+        // Act
+        var result = await _controller.GetCustomers(search: searchTerm, email: emailFilter);
+
+        // Assert
+        result.Result.Should().BeOfType<OkObjectResult>();
+        var okResult = result.Result as OkObjectResult;
+        var response = okResult!.Value as PaginatedResponseDto<CustomerResponseDto>;
+
+        response.Should().NotBeNull();
+        response!.Items.Should().HaveCount(1);
+        response.TotalCount.Should().Be(1);
+
+        // Verify both filters are passed (AND logic)
+        _mockRepository.Verify(r => r.GetAllAsync(0, 10, searchTerm, emailFilter, null, null), Times.Once);
+    }
+
+    [Fact]
+    public async Task GetCustomers_SearchWithNoResults_ReturnsEmptyItems()
+    {
+        // Arrange
+        var searchTerm = "nonexistent";
+        var customers = new List<Customer>();
+
+        _mockRepository
+            .Setup(r => r.GetAllAsync(0, 10, searchTerm, null, null, null))
+            .ReturnsAsync((customers, 0));
+
+        // Act
+        var result = await _controller.GetCustomers(search: searchTerm);
+
+        // Assert
+        result.Result.Should().BeOfType<OkObjectResult>();
+        var okResult = result.Result as OkObjectResult;
+        var response = okResult!.Value as PaginatedResponseDto<CustomerResponseDto>;
+
+        response.Should().NotBeNull();
+        response!.Items.Should().BeEmpty();
+        response.TotalCount.Should().Be(0);
+        response.TotalPages.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task GetCustomers_EmailFilterWithNoResults_ReturnsEmptyItems()
+    {
+        // Arrange
+        var emailFilter = "nonexistent@example.com";
+        var customers = new List<Customer>();
+
+        _mockRepository
+            .Setup(r => r.GetAllAsync(0, 10, null, emailFilter, null, null))
+            .ReturnsAsync((customers, 0));
+
+        // Act
+        var result = await _controller.GetCustomers(email: emailFilter);
+
+        // Assert
+        result.Result.Should().BeOfType<OkObjectResult>();
+        var okResult = result.Result as OkObjectResult;
+        var response = okResult!.Value as PaginatedResponseDto<CustomerResponseDto>;
+
+        response.Should().NotBeNull();
+        response!.Items.Should().BeEmpty();
+        response.TotalCount.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task GetCustomers_FilteringWithPagination_WorksCorrectly()
+    {
+        // Arrange
+        var searchTerm = "test";
+        var customers = new List<Customer>
+        {
+            new Customer
+            {
+                Id = Guid.NewGuid(),
+                Name = "Test User 11",
+                Email = "test11@example.com",
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            }
+        };
+
+        // Setup for page 2, pageSize 10, with search filter
+        // Skip should be 10 (page 2)
+        _mockRepository
+            .Setup(r => r.GetAllAsync(10, 10, searchTerm, null, null, null))
+            .ReturnsAsync((customers, 25)); // 25 total filtered results
+
+        // Act
+        var result = await _controller.GetCustomers(page: 2, pageSize: 10, search: searchTerm);
+
+        // Assert
+        result.Result.Should().BeOfType<OkObjectResult>();
+        var okResult = result.Result as OkObjectResult;
+        var response = okResult!.Value as PaginatedResponseDto<CustomerResponseDto>;
+
+        response.Should().NotBeNull();
+        response!.Items.Should().HaveCount(1);
+        response.TotalCount.Should().Be(25); // Reflects filtered count
+        response.Page.Should().Be(2);
+        response.PageSize.Should().Be(10);
+        response.TotalPages.Should().Be(3); // Ceiling(25/10)
+
+        _mockRepository.Verify(r => r.GetAllAsync(10, 10, searchTerm, null, null, null), Times.Once);
+    }
+
+    [Fact]
+    public async Task GetCustomers_EmptySearchString_TreatedAsNull()
+    {
+        // Arrange
+        var customers = new List<Customer>();
+
+        _mockRepository
+            .Setup(r => r.GetAllAsync(0, 10, "", null, null, null))
+            .ReturnsAsync((customers, 0));
+
+        // Act
+        var result = await _controller.GetCustomers(search: "");
+
+        // Assert
+        // Empty string should be passed as-is to repository
+        // Repository handles empty/whitespace check
+        _mockRepository.Verify(r => r.GetAllAsync(0, 10, "", null, null, null), Times.Once);
+    }
+
+    [Fact]
+    public async Task GetCustomers_EmptyEmailFilter_TreatedAsNull()
+    {
+        // Arrange
+        var customers = new List<Customer>();
+
+        _mockRepository
+            .Setup(r => r.GetAllAsync(0, 10, null, "", null, null))
+            .ReturnsAsync((customers, 0));
+
+        // Act
+        var result = await _controller.GetCustomers(email: "");
+
+        // Assert
+        // Empty string should be passed as-is to repository
+        // Repository handles empty/whitespace check
+        _mockRepository.Verify(r => r.GetAllAsync(0, 10, null, "", null, null), Times.Once);
     }
 
     #endregion

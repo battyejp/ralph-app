@@ -10,6 +10,7 @@ public interface ICustomerRepository
         int skip,
         int take,
         string? searchTerm = null,
+        string? emailFilter = null,
         DateTime? dateFrom = null,
         DateTime? dateTo = null);
     Task<Customer> CreateAsync(Customer customer);
