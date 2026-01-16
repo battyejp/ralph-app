@@ -56,6 +56,10 @@ public class CustomersControllerTests
         };
 
         _mockRepository
+            .Setup(r => r.EmailExistsAsync(createDto.Email))
+            .ReturnsAsync(false);
+
+        _mockRepository
             .Setup(r => r.CreateAsync(It.IsAny<Customer>()))
             .ReturnsAsync(createdCustomer);
 
@@ -98,6 +102,10 @@ public class CustomersControllerTests
         };
 
         _mockRepository
+            .Setup(r => r.EmailExistsAsync(createDto.Email))
+            .ReturnsAsync(false);
+
+        _mockRepository
             .Setup(r => r.CreateAsync(It.IsAny<Customer>()))
             .ReturnsAsync(createdCustomer);
 
@@ -124,6 +132,10 @@ public class CustomersControllerTests
             Name = "Test User",
             Email = "test@example.com"
         };
+
+        _mockRepository
+            .Setup(r => r.EmailExistsAsync(createDto.Email))
+            .ReturnsAsync(false);
 
         Customer capturedCustomer = null!;
         _mockRepository
@@ -153,6 +165,10 @@ public class CustomersControllerTests
             Name = "Test User",
             Email = "test@example.com"
         };
+
+        _mockRepository
+            .Setup(r => r.EmailExistsAsync(createDto.Email))
+            .ReturnsAsync(false);
 
         Customer capturedCustomer = null!;
         _mockRepository
@@ -189,6 +205,10 @@ public class CustomersControllerTests
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };
+
+        _mockRepository
+            .Setup(r => r.EmailExistsAsync(createDto.Email))
+            .ReturnsAsync(false);
 
         _mockRepository
             .Setup(r => r.CreateAsync(It.IsAny<Customer>()))
@@ -265,6 +285,10 @@ public class CustomersControllerTests
         };
 
         _mockRepository
+            .Setup(r => r.EmailExistsAsync(createDto.Email))
+            .ReturnsAsync(false);
+
+        _mockRepository
             .Setup(r => r.CreateAsync(It.IsAny<Customer>()))
             .ReturnsAsync(createdCustomer);
 
@@ -303,6 +327,10 @@ public class CustomersControllerTests
         };
 
         _mockRepository
+            .Setup(r => r.EmailExistsAsync(createDto.Email))
+            .ReturnsAsync(false);
+
+        _mockRepository
             .Setup(r => r.CreateAsync(It.IsAny<Customer>()))
             .ReturnsAsync(createdCustomer);
 
@@ -311,6 +339,115 @@ public class CustomersControllerTests
 
         // Assert
         result.Result.Should().BeOfType<CreatedAtActionResult>();
+    }
+
+    [Fact]
+    public async Task CreateCustomer_DuplicateEmail_Returns409Conflict()
+    {
+        // Arrange
+        var createDto = new CreateCustomerDto
+        {
+            Name = "John Doe",
+            Email = "existing@example.com",
+            Phone = "+1234567890",
+            Address = "123 Main St"
+        };
+
+        _mockRepository
+            .Setup(r => r.EmailExistsAsync(createDto.Email))
+            .ReturnsAsync(true);
+
+        // Act
+        var result = await _controller.CreateCustomer(createDto);
+
+        // Assert
+        result.Result.Should().BeOfType<ConflictObjectResult>();
+        var conflictResult = result.Result as ConflictObjectResult;
+        conflictResult!.StatusCode.Should().Be(409);
+    }
+
+    [Fact]
+    public async Task CreateCustomer_DuplicateEmail_ReturnsCorrectErrorMessage()
+    {
+        // Arrange
+        var createDto = new CreateCustomerDto
+        {
+            Name = "John Doe",
+            Email = "existing@example.com"
+        };
+
+        _mockRepository
+            .Setup(r => r.EmailExistsAsync(createDto.Email))
+            .ReturnsAsync(true);
+
+        // Act
+        var result = await _controller.CreateCustomer(createDto);
+
+        // Assert
+        var conflictResult = result.Result as ConflictObjectResult;
+        conflictResult.Should().NotBeNull();
+        conflictResult!.Value.Should().NotBeNull();
+
+        var errorResponse = conflictResult.Value;
+        var messageProperty = errorResponse!.GetType().GetProperty("message");
+        messageProperty.Should().NotBeNull();
+        var message = messageProperty!.GetValue(errorResponse) as string;
+        message.Should().Be("A customer with this email already exists");
+    }
+
+    [Fact]
+    public async Task CreateCustomer_DuplicateEmail_DoesNotCallCreateAsync()
+    {
+        // Arrange
+        var createDto = new CreateCustomerDto
+        {
+            Name = "John Doe",
+            Email = "existing@example.com"
+        };
+
+        _mockRepository
+            .Setup(r => r.EmailExistsAsync(createDto.Email))
+            .ReturnsAsync(true);
+
+        // Act
+        await _controller.CreateCustomer(createDto);
+
+        // Assert
+        _mockRepository.Verify(r => r.CreateAsync(It.IsAny<Customer>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task CreateCustomer_UniqueEmail_CallsEmailExistsAsync()
+    {
+        // Arrange
+        var createDto = new CreateCustomerDto
+        {
+            Name = "Jane Smith",
+            Email = "new@example.com"
+        };
+
+        var createdCustomer = new Customer
+        {
+            Id = Guid.NewGuid(),
+            Name = createDto.Name,
+            Email = createDto.Email,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+
+        _mockRepository
+            .Setup(r => r.EmailExistsAsync(createDto.Email))
+            .ReturnsAsync(false);
+
+        _mockRepository
+            .Setup(r => r.CreateAsync(It.IsAny<Customer>()))
+            .ReturnsAsync(createdCustomer);
+
+        // Act
+        await _controller.CreateCustomer(createDto);
+
+        // Assert
+        _mockRepository.Verify(r => r.EmailExistsAsync(createDto.Email), Times.Once);
     }
 
     #endregion

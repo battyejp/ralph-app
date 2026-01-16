@@ -112,4 +112,10 @@ public class CustomerRepository : ICustomerRepository
         return await _context.Customers
             .AnyAsync(c => c.Id == id && !c.IsDeleted);
     }
+
+    public async Task<bool> EmailExistsAsync(string email)
+    {
+        return await _context.Customers
+            .AnyAsync(c => c.Email == email && !c.IsDeleted);
+    }
 }
