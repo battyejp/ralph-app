@@ -24,6 +24,40 @@
 
 ---
 
+## 2026-01-16 - US-003
+- **What was implemented**: Created CustomerForm component with comprehensive validation
+- **Files created**:
+  - `src/frontend/src/components/CustomerForm.tsx` - Form component with:
+    - Name (required) and Email (required) fields with client-side validation
+    - Phone and Address optional fields
+    - Inline error messages with red text styling
+    - Client-side validation on blur and submit
+    - Server-side validation error display
+    - Loading/disabled state during API call
+    - onSuccess callback prop
+    - Responsive stacked layout
+    - Full accessibility (aria-invalid, aria-describedby, role="alert")
+  - `src/frontend/src/components/CustomerForm.test.tsx` - 37 comprehensive tests covering:
+    - Rendering (fields, buttons, placeholders, required markers)
+    - User input for all fields
+    - Client-side validation (blur, submit, error clearing)
+    - Form submission (with/without optional fields, trimming, callback)
+    - Loading state (button disabled, inputs disabled, text changes)
+    - Server-side error handling (field errors, duplicate email, generic errors)
+    - Accessibility (aria attributes, alert roles)
+    - Responsive design
+    - Edge cases (empty optionals, whitespace handling)
+- **Learnings for future iterations**:
+  - Use `touched` state pattern to show errors only after field interaction
+  - Email validation regex: `/^[^\s@]+@[^\s@]+\.[^\s@]+$/`
+  - Server errors come with field names in PascalCase (e.g., "Name", "Email") - convert to lowercase for matching
+  - For non-field-specific API errors (like 409 duplicate), display in email field as fallback
+  - Mock ApiError class in tests when mocking customerApi module
+  - Component is ready for integration in US-005 (modal) and US-006 (dedicated page)
+  - Coverage: 96.8% statements, 80% branches, 90.47% functions, 96.59% lines
+
+---
+
 ## 2026-01-16 - US-002
 - **What was implemented**: Added createCustomer method to frontend API client
 - **Files changed**:
