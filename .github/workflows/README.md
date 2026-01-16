@@ -26,10 +26,21 @@ This directory contains the CI/CD pipelines for the Ralph App backend API.
 2. Sets up .NET 10
 3. Restores dependencies
 4. Builds the solution
-5. Runs all tests
-6. Uploads code coverage to Codecov (on PRs)
+5. Runs all tests with code coverage collection
+6. Generates HTML coverage report (uploaded as artifact)
+7. Posts coverage summary as a PR comment
+8. Writes coverage summary to job summary
+9. **Fails the build if line coverage is below 85%**
 
-This workflow acts as a gatekeeper, ensuring all code builds and tests pass before merging.
+**Coverage Reports:**
+- **HTML Report**: Full interactive report available as a downloadable artifact (retained for 14 days)
+- **PR Comment**: Summary with badge showing coverage status (red/yellow/green thresholds at 60%/85%)
+- **Job Summary**: Markdown summary visible in the workflow run
+
+**Coverage Threshold:**
+The build will fail if line coverage drops below 85%. This ensures code quality standards are maintained.
+
+This workflow acts as a gatekeeper, ensuring all code builds, tests pass, and coverage meets the minimum threshold before merging.
 
 ---
 
@@ -114,7 +125,6 @@ Configure these secrets in your GitHub repository settings:
 | `AZURE_TENANT_ID` | Azure AD tenant ID |
 | `AZURE_SUBSCRIPTION_ID` | Azure subscription ID |
 | `MYSQL_ADMIN_PASSWORD` | MySQL administrator password (for infra deployment) |
-| `CODECOV_TOKEN` | Codecov upload token (optional, for coverage reports) |
 
 ## Environments
 
