@@ -12,7 +12,7 @@ param appName string = 'ralph-app-api'
 param environment string
 
 @description('App Service Plan SKU')
-param appServicePlanSku string = environment == 'production' ? 'P1v3' : 'B1'
+param appServicePlanSku string = environment == 'production' ? 'P1v3' : 'S1'
 
 @description('MySQL administrator login')
 param mysqlAdminLogin string = 'appadmin'
