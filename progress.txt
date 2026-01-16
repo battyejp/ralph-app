@@ -1,297 +1,392 @@
-## Codebase Patterns
-- Project uses .NET 10 and MySQL with Pomelo.EntityFrameworkCore.MySql
-- Entity configuration is done using Fluent API in ApplicationDbContext.OnModelCreating
-- Test coverage is calculated per-class - focus on relevant code coverage not global coverage
-- EF Core migrations are in CustomerApi/Migrations/ directory
-- Docker Compose is used for MySQL database (port 3306)
-- Connection string uses format: Server=localhost;Port=3306;Database=customerdb;User=root;Password=password;
-- Environment variables are stored in .env file (not committed) with .env.example as template
-
 # Ralph Progress Log
-Started: 01/15/2026 11:20:59
+Started: 01/15/2026 16:03:23
 ---
 
-## 01/15/2026 11:32 - US-002
+## 2026-01-15 16:10 - US-001
 Thread: https://ampcode.com/threads/$AMP_CURRENT_THREAD_ID
-- Implemented Customer entity with all required fields (Id, Name, Email, Phone, Address, CreatedAt, UpdatedAt)
-- Configured entity with Fluent API for constraints:
-  - Name: required, max 100 chars
-  - Email: required, max 255 chars, unique index
-  - Phone: optional, max 20 chars
-  - Address: optional, max 500 chars
-- Created and applied initial EF Core migration to MySQL database
-- Updated projects to target .NET 10 (from .NET 9)
-- Replaced SQL Server provider with Pomelo.EntityFrameworkCore.MySql
-- Recreated docker-compose.yml and .env.example files
+- Implemented Next.js frontend project initialization
+- Created complete Next.js 14 project structure with TypeScript and App Router
+- Configured Tailwind CSS with shadcn/ui design system
+- Set up project directories: src/app, src/components, src/lib
+- Added environment configuration for API URL
+- Created comprehensive .gitignore for frontend
+- Added README with setup instructions
 
-Files changed:
-- CustomerApi/Models/Customer.cs (already existed with correct fields)
-- CustomerApi/Data/ApplicationDbContext.cs (added max length for Email)
-- CustomerApi/CustomerApi.csproj (updated to .NET 10, changed to MySQL provider)
-- CustomerApi/Program.cs (changed from UseSqlServer to UseMySql)
-- CustomerApi/appsettings.json (updated connection string for MySQL)
-- CustomerApi/Migrations/20260115112934_InitialCreate.cs (new migration)
-- CustomerApi.Tests/CustomerApi.Tests.csproj (updated to .NET 10)
-- docker-compose.yml (recreated)
-- .env.example (recreated)
+**Files Created:**
+- package.json (Next.js dependencies and scripts)
+- tsconfig.json (TypeScript configuration)
+- next.config.ts (Next.js configuration)
+- tailwind.config.ts (Tailwind CSS with shadcn/ui theme)
+- postcss.config.mjs (PostCSS configuration)
+- .eslintrc.json (ESLint configuration)
+- components.json (shadcn/ui configuration)
+- src/app/layout.tsx (Root layout)
+- src/app/page.tsx (Home page)
+- src/app/globals.css (Global styles with theme variables)
+- src/lib/utils.ts (Utility functions for className merging)
+- .env.local and .env.example (Environment configuration)
+- .gitignore (Frontend-specific gitignore)
+- README.md (Setup instructions)
 
 **Learnings for future iterations:**
-- The project previously had SQL Server migrations that needed to be removed before creating MySQL migrations
-- When switching database providers, old migrations cause build errors and must be deleted
-- .NET 10 requires dotnet-ef version 10.0.0 - version mismatches cause errors
-- Customer model and ApplicationDbContext both have 100% test coverage
-- Overall coverage appears low (39%) but includes untested boilerplate like Program.cs and WeatherForecast.cs
-- For story acceptance, focus on coverage of the specific code being implemented, not global coverage
-- The branch name in PRD must match exactly (ralph/customer-api not ralph/claude-customer-api)
+- Node.js is not installed on the host system, so manual scaffolding was required
+- The project will need to be run via Docker (see US-002, US-004)
+- shadcn/ui dependencies include: @radix-ui components, class-variance-authority, clsx, tailwind-merge, lucide-react
+- Environment variables use NEXT_PUBLIC_ prefix for client-side access
+- Next.js 14 uses App Router (app directory) not Pages Router
 ---
 
-## 01/15/2026 14:09 - US-004
+## 2026-01-15 16:35 - US-002
 Thread: https://ampcode.com/threads/$AMP_CURRENT_THREAD_ID
-- Implemented POST /api/customers endpoint in CustomersController
-- Endpoint accepts CreateCustomerDto and returns 201 Created with CustomerResponseDto
-- Returns 400 Bad Request for invalid model state with validation details
-- Location header is set in response pointing to CreateCustomer action
-- CreatedAt and UpdatedAt timestamps automatically set to UTC time
-- Generated new GUID for customer Id on creation
-- Registered ICustomerRepository as scoped service in DI container
-- Comprehensive unit tests created with 100% controller coverage
-- All 89 tests passing (10 new controller tests added)
+- Created multi-stage Dockerfile for Next.js frontend
+- Configured development stage with hot reload support
+- Added build and production stages for optimized deployment
+- Created .dockerignore to optimize build context
+- Successfully built Docker image for dev stage
 
-Files changed:
-- CustomerApi/Program.cs (registered ICustomerRepository in DI container)
-- CustomerApi/Controllers/CustomersController.cs (new controller with POST endpoint)
-- CustomerApi.Tests/Controllers/CustomersControllerTests.cs (new test file with 10 comprehensive tests)
+**Files Created:**
+- src/frontend/Dockerfile (Multi-stage Docker build)
+- src/frontend/.dockerignore (Optimize build context)
 
 **Learnings for future iterations:**
-- Controller uses constructor injection for ICustomerRepository and IMapper
-- AutoMapper was already configured in Program.cs from US-003
-- Controller tests use Moq for repository mocking and actual AutoMapper configuration for mapping
-- The CreateCustomerDto already has DataAnnotations validation ([Required], [EmailAddress], [StringLength]) from US-003
-- ModelState validation happens automatically in ASP.NET Core before controller action execution
-- CreatedAtAction returns 201 with Location header - route values include the created resource id
-- Tests verify proper UTC timestamp setting using BeCloseTo for time comparison (within 5 seconds)
-- FluentAssertions provides clean test assertions (Should().BeOfType, Should().NotBeNull, etc.)
-- Coverage report shows per-class coverage - CustomersController achieved 100% coverage
+- Docker builds successfully using Node.js 20 Alpine
+- Multi-stage build includes: base, deps, dev, builder, production stages
+- Development stage uses `npm run dev` with hot reload support
+- Port 3000 exposed for Next.js development server
+- .dockerignore should exclude node_modules, .next, out, .git to reduce build context size
+- Without .dockerignore, build context was over 360MB; with it, much smaller and faster
+- Production stage requires standalone output configuration in next.config.ts (for future)
 ---
 
-## 01/15/2026 14:15 - US-005
+## 2026-01-15 16:40 - US-003
 Thread: https://ampcode.com/threads/$AMP_CURRENT_THREAD_ID
-- Implemented GET /api/customers/{id} endpoint in CustomersController
-- Endpoint accepts GUID id parameter and returns customer details
-- Returns 200 OK with CustomerResponseDto when customer is found
-- Returns 404 Not Found with error message when customer doesn't exist
-- Uses existing ICustomerRepository.GetByIdAsync method
-- AutoMapper maps Customer entity to CustomerResponseDto
-- Comprehensive unit tests created with 100% method coverage
-- All 94 tests passing (5 new GET endpoint tests added)
+- Created multi-stage Dockerfile for .NET backend API
+- Configured build, publish, and runtime stages
+- Added .dockerignore to optimize build context
+- Successfully built and verified Docker image
 
-Files changed:
-- CustomerApi/Controllers/CustomersController.cs (added GetCustomerById method)
-- CustomerApi.Tests/Controllers/CustomersControllerTests.cs (added 5 comprehensive tests for GET endpoint)
+**Files Created:**
+- src/backend/CustomerApi/Dockerfile (Multi-stage Docker build)
+- src/backend/CustomerApi/.dockerignore (Optimize build context)
 
 **Learnings for future iterations:**
-- GET endpoint uses route parameter {id} with [HttpGet("{id}")] attribute
-- Repository GetByIdAsync returns null when customer not found, which we check and return 404
-- NotFound() method can accept anonymous objects for error messages (new { message = "..." })
-- When testing anonymous objects in responses, use reflection to access properties (GetType().GetProperty())
-- CustomersController maintains 100% line and branch coverage across all methods
-- All existing tests continue to pass - no regressions introduced
+- Backend uses .NET 10.0 (net10.0), not .NET 8 as originally specified
+- Used mcr.microsoft.com/dotnet/sdk:10.0 for build stage
+- Used mcr.microsoft.com/dotnet/aspnet:10.0 for runtime stage
+- Multi-stage build includes: build, publish, and runtime stages
+- API exposed on port 5000 via ASPNETCORE_URLS environment variable
+- .dockerignore should exclude bin/, obj/, .vs/, .vscode/ to reduce build context
+- Dockerfile uses dotnet restore, build, and publish commands in sequence
+- Build completed successfully with 0 warnings and 0 errors
 ---
-
-## 01/15/2026 14:28 - US-006
+## 2026-01-15 19:13 - US-004
 Thread: https://ampcode.com/threads/$AMP_CURRENT_THREAD_ID
-- Implemented GET /api/customers endpoint with pagination support
-- Created generic PaginatedResponseDto<T> for reusable pagination response structure
-- Endpoint accepts query parameters: page (default 1), pageSize (default 10, max 100)
-- Response includes: items, totalCount, page, pageSize, totalPages
-- Parameter validation normalizes invalid values (page < 1 normalizes to 1, pageSize > 100 caps at 100)
-- Returns empty items array when no customers exist (not 404)
-- Calculates skip value correctly as (page - 1) * pageSize
-- Calculates totalPages using Math.Ceiling for proper rounding
-- 11 comprehensive unit tests added covering all scenarios
-- All 104 tests passing with 100% controller coverage
+- Configured Docker Compose for all services (MySQL, Backend API, Frontend)
+- Added backend service with proper dependencies and health checks
+- Added frontend service with volume mounts for hot reload support
+- Verified all services start successfully and are accessible
+- Frontend accessible at http://localhost:3000
+- Backend accessible at http://localhost:5000 (healthy)
+- MySQL accessible at localhost:3306
 
-Files changed:
-- CustomerApi/DTOs/PaginatedResponseDto.cs (new generic DTO for paginated responses)
-- CustomerApi/Controllers/CustomersController.cs (added GetCustomers endpoint)
-- CustomerApi.Tests/Controllers/CustomersControllerTests.cs (added 11 comprehensive tests)
+**Files Modified:**
+- docker-compose.yml (Added backend and frontend services)
 
 **Learnings for future iterations:**
-- Generic DTOs like PaginatedResponseDto<T> enable code reuse across different entity types
-- Parameter normalization should happen before calculating skip to ensure consistency
-- The GetCustomers endpoint must be defined BEFORE GetCustomerById to avoid routing conflicts (specific routes before parameterized routes)
-- Repository GetAllAsync already exists with skip/take parameters, making pagination straightforward
-- When totalCount is 0, totalPages should also be 0 (not 1)
-- Moq's Setup allows matching specific parameter values to test different scenarios
-- AutoMapper can map IEnumerable<Customer> to IEnumerable<CustomerResponseDto> directly
+- Backend service depends on MySQL with health check condition
+- Frontend service depends on backend (basic dependency, no health check needed)
+- Backend uses ASPNETCORE_URLS environment variable to bind to port 5000
+- Backend connection string uses "Server=mysql" (service name) instead of localhost
+- Frontend uses volume mounts for hot reload: ./src/frontend:/app with exclusions for node_modules and .next
+- Frontend target is "dev" stage from multi-stage Dockerfile for development mode
+- All services use restart: always for automatic recovery
+- Backend health check uses curl to /health endpoint with 30s start_period
+- NEXT_PUBLIC_API_URL should point to http://localhost:5000 for client-side API calls
 ---
-## 01/15/2026 14:42 - US-007
-Thread: https://ampcode.com/threads/$AMP_CURRENT_THREAD_ID
-- Implemented filtering and search functionality for GET /api/customers endpoint
-- Added 'search' query parameter for case-insensitive search across Name and Email fields
-- Added 'email' query parameter for exact match filtering on Email field
-- Filters combine with AND logic when both provided (repository applies both WHERE clauses)
-- Filtering works correctly with pagination - totalCount reflects filtered results
-- 9 comprehensive unit tests added covering all filtering scenarios
-- All 112 tests passing with 100% coverage on relevant classes
 
-Files changed:
-- CustomerApi/Repositories/ICustomerRepository.cs (added emailFilter parameter to GetAllAsync)
-- CustomerApi/Repositories/CustomerRepository.cs (implemented email exact match filter with WHERE clause)
-- CustomerApi/Controllers/CustomersController.cs (added search and email query parameters to GetCustomers)
-- CustomerApi.Tests/Controllers/CustomersControllerTests.cs (added 9 filtering tests, updated existing tests)
+## 2026-01-15 19:28 - US-005
+Thread: https://ampcode.com/threads/$AMP_CURRENT_THREAD_ID
+- Implemented API Client Service Layer for frontend
+- Created TypeScript interfaces matching backend DTOs (Customer, PaginatedResponse, CustomerSearchParams, ApiErrorResponse)
+- Implemented customerApi service with searchCustomers() and getCustomerById() methods
+- Added comprehensive error handling with custom ApiError class
+- Configured Jest testing framework for frontend
+- Created comprehensive test suite with 15 tests, 97.82% coverage
+- Build verified successfully via Docker
+- API connectivity verified
+
+**Files Created:**
+- src/frontend/src/lib/api/types.ts (TypeScript interfaces)
+- src/frontend/src/lib/api/customerApi.ts (API client service with error handling)
+- src/frontend/src/lib/api/customerApi.test.ts (Comprehensive test suite)
+- src/frontend/jest.config.js (Jest configuration with 80% coverage threshold)
+- src/frontend/jest.setup.js (Jest setup file)
+
+**Files Modified:**
+- src/frontend/package.json (Added Jest, testing-library, test scripts)
+- src/frontend/package-lock.json (Dependency updates)
 
 **Learnings for future iterations:**
-- When adding parameters to repository methods, update both interface and implementation signatures
-- The repository already had searchTerm parameter but not emailFilter - added alongside existing parameters
-- Email filter uses exact match (Email == emailFilter), search uses case-insensitive contains (Name.ToLower().Contains() || Email.ToLower().Contains())
-- Controller passes parameters directly to repository - no additional logic needed in controller
-- When updating repository signatures, all existing test mocks need to be updated with new parameter (changed from 5 to 6 parameters)
-- Use replace_all=true in Edit tool for repeated test signature updates across the file
-- Filter tests verify both the response data AND that correct parameters were passed to repository (using Moq Verify)
-- Empty string filters are passed as-is to repository which handles the whitespace check
+- API client uses singleton pattern exported as `customerApi`
+- ApiError class extends Error with status and errors properties for structured error handling
+- Network errors (TypeError) are caught and wrapped in ApiError with user-friendly messages
+- Base URL is configured from NEXT_PUBLIC_API_URL environment variable (defaults to http://localhost:5000)
+- Query parameters are built using URLSearchParams for proper encoding
+- Jest tests use mocked global.fetch for isolated unit testing
+- Coverage excludes src/app/** and src/lib/utils.ts to focus on API client code
+- Tests must be run in Docker since Node.js is not installed on host
+- Build command: `docker run --rm frontend-dev npm run build`
+- Test command: `docker run --rm frontend-dev npm test -- --coverage`
+- The backend requires database migrations to be applied before the Customers table exists (this will need to be addressed in future iterations)
 ---
-
-## 01/15/2026 14:50 - US-008
+## 2026-01-15 19:45 - US-006
 Thread: https://ampcode.com/threads/$AMP_CURRENT_THREAD_ID
-- Implemented sorting functionality for GET /api/customers endpoint
-- Added sortBy query parameter supporting: name, email, createdAt
-- Added sortOrder query parameter supporting: asc, desc
-- Default sort is CreatedAt descending (newest first) when no parameters provided
-- Sorting implemented in repository using switch expression with OrderBy/OrderByDescending
-- Invalid sortBy values default to CreatedAt descending
-- Sorting works correctly with pagination and filtering
-- 9 comprehensive unit tests added covering all sorting scenarios
-- Updated existing repository test to explicitly specify sort parameters
-- All 121 tests passing with 100% coverage on relevant classes
+- Implemented Advanced Search Form with multiple filter fields
+- Created shadcn/ui components: Button, Input, Label in src/components/ui/
+- Built SearchForm component with three search fields:
+  - General search (name/email)
+  - Email exact match
+  - Phone number search
+- Implemented useDebounce custom hook with 500ms delay for better UX
+- Added clear/reset filters functionality
+- Integrated SearchForm into home page with loading state
+- Created comprehensive test suite with 45 test cases
+- Achieved 96.42% branch coverage (exceeds 80% requirement)
+- Build verified successfully in Docker
+- Browser verification completed using dev-browser skill
+- All functionality working: form inputs, search button, clear button, responsive design
 
-Files changed:
-- CustomerApi/Repositories/ICustomerRepository.cs (added sortBy and sortOrder parameters to GetAllAsync)
-- CustomerApi/Repositories/CustomerRepository.cs (implemented sorting logic with switch expression)
-- CustomerApi/Controllers/CustomersController.cs (added sortBy and sortOrder parameters to GetCustomers)
-- CustomerApi.Tests/Controllers/CustomersControllerTests.cs (added 9 sorting tests, updated all GetAllAsync mocks)
-- CustomerApi.Tests/Repositories/CustomerRepositoryTests.cs (updated GetAllAsync_ResultsOrderedByName test)
+**Files Created:**
+- src/frontend/src/components/ui/button.tsx (shadcn/ui Button component)
+- src/frontend/src/components/ui/input.tsx (shadcn/ui Input component)
+- src/frontend/src/components/ui/label.tsx (shadcn/ui Label component)
+- src/frontend/src/components/SearchForm.tsx (Main search form component)
+- src/frontend/src/components/SearchForm.test.tsx (Comprehensive test suite with 28 tests)
+- src/frontend/src/hooks/useDebounce.ts (Custom debounce hook)
+- src/frontend/src/hooks/useDebounce.test.ts (Hook tests with 17 test cases)
+
+**Files Modified:**
+- src/frontend/src/app/page.tsx (Integrated SearchForm with state management)
 
 **Learnings for future iterations:**
-- Repository sorting uses switch expression for clean conditional OrderBy/OrderByDescending logic
-- Default sorting behavior: when no sortBy/sortOrder specified, defaults to CreatedAt descending (newest first)
-- When sortBy specified without sortOrder, defaults to ascending (except CreatedAt defaults to descending when no params)
-- The isDescending logic: `sortOrder?.ToLower() == "desc" || (string.IsNullOrWhiteSpace(sortBy) && string.IsNullOrWhiteSpace(sortOrder))`
-- When adding parameters to repository methods, ALL test mocks must be updated with correct parameter count
-- Use replace_all=true in Edit tool for systematic updates across test files
-- Test failures with Moq provide "Performed invocations" output showing actual parameters called - very useful for debugging
-- Sort parameters are case-insensitive (converted with ToLower() in repository)
-- Invalid sortBy values gracefully default to CreatedAt descending rather than throwing errors
-- Sorting combines correctly with existing pagination and filtering - no conflicts
+- shadcn/ui components were created manually since npx is not available on host
+- Components use Radix UI primitives (@radix-ui/react-slot, @radix-ui/react-label)
+- Button component uses class-variance-authority for variant management
+- useDebounce hook is critical for good UX - prevents excessive API calls
+- SearchForm uses controlled inputs with React useState
+- Phone search is combined with general search parameter in API call
+- Form is responsive using Tailwind classes: grid-cols-1 md:grid-cols-3, flex-col sm:flex-row
+- Loading state disables all inputs and buttons during search
+- Tests mock useDebounce to make them synchronous for easier testing
+- Browser verification using dev-browser skill confirmed all interactive functionality
+- Next.js 14 'use client' directive required for components with useState
 ---
 
-## 01/15/2026 14:59 - US-009
+## 2026-01-15 20:00 - US-007
 Thread: https://ampcode.com/threads/$AMP_CURRENT_THREAD_ID
-- Implemented PUT /api/customers/{id} endpoint in CustomersController
-- Endpoint accepts UpdateCustomerDto and returns 200 OK with updated CustomerResponseDto
-- Returns 404 Not Found when customer doesn't exist with error message
-- Returns 400 Bad Request for invalid model state with validation error details
-- UpdatedAt timestamp is automatically set to current UTC time on update
-- CreatedAt timestamp is preserved from original customer (not modified)
-- Customer Id is preserved during update operation
-- 11 comprehensive unit tests created covering all scenarios
-- All 132 tests passing (11 new UpdateCustomer tests added)
+- Implemented Display Search Results Table feature
+- Created CustomerResultsTable component with all required states:
+  - Loading state with animated spinner
+  - Empty state with helpful user message
+  - Error state with user-friendly error display
+  - Success state with data table and mobile cards
+- Built shadcn/ui Table component for desktop view
+- Implemented responsive design with card view for mobile (md: breakpoint)
+- Integrated results table into home page with API calls
+- Connected to customerApi service with proper error handling
+- All 72 tests passing with 97.05% statement coverage, 97.14% branch coverage
+- Build verified successfully
+- Browser verification completed - UI renders correctly
 
-Files changed:
-- CustomerApi/Controllers/CustomersController.cs (added UpdateCustomer method)
-- CustomerApi.Tests/Controllers/CustomersControllerTests.cs (added 11 comprehensive tests for PUT endpoint)
+**Files Created:**
+- src/frontend/src/components/ui/table.tsx (shadcn/ui Table component with all subcomponents)
+- src/frontend/src/components/CustomerResultsTable.tsx (Main results table component)
+- src/frontend/src/components/CustomerResultsTable.test.tsx (Comprehensive test suite with 72 tests)
+
+**Files Modified:**
+- src/frontend/src/app/page.tsx (Integrated CustomerResultsTable with API calls and state management)
 
 **Learnings for future iterations:**
-- PUT endpoint follows similar pattern to POST - check ModelState first, then check if entity exists
-- Repository UpdateAsync method already existed from previous stories - no changes needed to repository layer
-- Update operations require preserving immutable fields (Id, CreatedAt) while updating mutable ones
-- AutoMapper's Map method can map from DTO to existing entity instance: _mapper.Map(updateDto, existingCustomer)
-- Store original CreatedAt before mapping to preserve it, then explicitly set it back after mapping
-- UpdatedAt must be set to DateTime.UtcNow on every update operation
-- Test patterns for update: verify success case, not found case, invalid model state, timestamp preservation
-- When testing timestamp preservation, capture the customer entity passed to UpdateAsync using Moq Callback
-- Update endpoint uses HttpPut attribute with route parameter: [HttpPut("{id}")]
-- CustomersController maintains 100% test coverage across all methods
+- CustomerResultsTable renders both desktop table and mobile cards simultaneously (both hidden/shown via Tailwind classes)
+- When testing components with duplicate content for responsive views, use getAllByText() instead of getByText()
+- Table component uses shadcn/ui styling with Tailwind classes: hidden md:block for desktop, md:hidden for mobile
+- Mobile card view uses grid layout with border, rounded corners, and hover effects
+- Date formatting uses toLocaleDateString() with en-US locale for consistency
+- Customer rows are clickable and trigger onCustomerClick callback (prepared for US-010 details modal)
+- Empty state includes search icon and helpful message about adjusting filters
+- Error state includes warning icon and displays the error message from ApiError
+- Loading state shows centered spinner with descriptive text
+- Results only show after hasSearched is true (prevents showing empty state on page load)
+- ESLint requires HTML entities for apostrophes in JSX (use &apos; instead of ')
+- Component successfully handles all state precedence: loading > error > empty > success
 ---
 
-## 01/15/2026 15:04 - US-010
+## 2026-01-15 22:45 - US-008
 Thread: https://ampcode.com/threads/$AMP_CURRENT_THREAD_ID
-- Implemented DELETE /api/customers/{id} endpoint in CustomersController
-- Endpoint deletes customer by GUID ID and returns 204 No Content on success
-- Returns 404 Not Found when customer doesn't exist with error message
-- Uses existing repository DeleteAsync method (hard delete from database)
-- 7 comprehensive unit tests created covering all scenarios
-- All 139 tests passing (7 new DeleteCustomer tests added)
+- Implemented Pagination Controls for customer search results
+- Created shadcn/ui Select component with all required subcomponents
+- Built PaginationControls component with:
+  - Current page, total pages, and total count display
+  - Previous/Next navigation buttons with proper disabled states
+  - Page size selector dropdown (10, 25, 50, 100 options)
+  - Responsive layout for mobile and desktop
+- Integrated pagination into home page (page.tsx):
+  - Added pagination state management (currentPage, pageSize, totalPages, totalCount)
+  - Implemented URL parameter management with Next.js useSearchParams
+  - Wrapped component in Suspense boundary for Next.js compliance
+  - Preserve search filters when changing pages or page size
+  - Reset to page 1 when new search or page size changes
+- Created comprehensive test suite with 97 tests total across all components
+- Achieved 94.94% statement coverage and 97.95% branch coverage
+- Build verified successfully in Docker
+- Frontend service running and accessible at http://localhost:3000
 
-Files changed:
-- CustomerApi/Controllers/CustomersController.cs (added DeleteCustomer method)
-- CustomerApi.Tests/Controllers/CustomersControllerTests.cs (added 7 comprehensive tests for DELETE endpoint)
+**Files Created:**
+- src/frontend/src/components/ui/select.tsx (shadcn/ui Select component)
+- src/frontend/src/components/PaginationControls.tsx (Pagination component)
+- src/frontend/src/components/PaginationControls.test.tsx (Test suite with 30+ tests)
+
+**Files Modified:**
+- src/frontend/src/app/page.tsx (Integrated pagination, added Suspense boundary, URL management)
 
 **Learnings for future iterations:**
-- DELETE endpoint follows similar pattern to GET by ID and PUT - check if entity exists first before performing operation
-- Repository DeleteAsync method already existed from previous stories - no changes needed to repository layer
-- DELETE endpoints return NoContent() (204) on success, not Ok() like other operations
-- NoContentResult is the return type for 204 responses, not ActionResult<T>
-- Test patterns for delete: verify success returns 204, not found returns 404, repository methods called correctly
-- Use Times.Never in Moq Verify to ensure DeleteAsync not called when customer doesn't exist
-- Callback pattern used to capture deleted customer entity for verification in tests
-- CustomersController maintains 100% test coverage across all methods including DELETE
-- The repository's DeleteAsync is a hard delete (permanent removal from database)
+- Next.js 14 requires useSearchParams() to be wrapped in a Suspense boundary to avoid prerendering errors
+- Split the component into HomeContent (uses useSearchParams) and Home (wraps in Suspense)
+- Suspense fallback provides loading state while params are being resolved
+- URL parameters should only include non-default values (page > 1, pageSize != 25) to keep URLs clean
+- router.push() updates URL without full page reload, perfect for client-side pagination
+- PaginationControls only shows when totalCount > 0 and there's no error
+- Page size changes should reset to page 1 to avoid showing empty results
+- The Select component uses Radix UI primitives: Root, Trigger, Content, Item, Value, etc.
+- Select dropdown requires proper z-index (z-50) and Portal to render above other content
+- All pagination state must be synchronized: local state, URL params, and API calls
 ---
 
-## 01/15/2026 15:04 - US-010 Completion Summary
-- DELETE /api/customers/{id} endpoint fully implemented and tested
-- All acceptance criteria met:
-  ✓ DELETE endpoint accepts GUID ID and deletes customer
-  ✓ Returns 204 No Content on successful deletion
-  ✓ Returns 404 Not Found when customer doesn't exist
-  ✓ Customer permanently removed from database (hard delete)
-  ✓ Code builds successfully
-  ✓ Tests pass with 100% controller coverage (139 total tests, all passing)
-- Commits:
-  - 2677ef0: feat: US-010 - Implement DELETE customer endpoint
-  - d36f6f2: chore: Update prd.json and progress.txt for US-010 completion
----
-
-
-## 01/15/2026 15:17 - US-011
+## 2026-01-15 23:45 - US-009
 Thread: https://ampcode.com/threads/$AMP_CURRENT_THREAD_ID
-- Configured Swagger/OpenAPI documentation for the Customer API
-- Added Swashbuckle.AspNetCore 6.8.1 package (compatible with .NET 10)
-- Enabled XML documentation file generation in CustomerApi.csproj with GenerateDocumentationFile=true
-- Suppressed CS1591 warnings (missing XML comments) with NoWarn
-- Configured Swagger in Program.cs with API title, version, and description
-- Set Swagger UI to be accessible at /swagger endpoint in development environment
-- Added comprehensive XML documentation comments to all controller endpoints:
-  - GetCustomers (GET /api/customers) - paginated list with filtering and sorting
-  - GetCustomerById (GET /api/customers/{id}) - retrieve by ID
-  - CreateCustomer (POST /api/customers) - create new customer
-  - UpdateCustomer (PUT /api/customers/{id}) - update existing customer
-  - DeleteCustomer (DELETE /api/customers/{id}) - delete customer
-- Added XML documentation comments to all DTOs:
-  - CreateCustomerDto - with property descriptions
-  - UpdateCustomerDto - with property descriptions
-  - CustomerResponseDto - with property descriptions including timestamps
-  - PaginatedResponseDto<T> - generic DTO with type parameter documentation
-- All 139 tests passing with no regressions
+- Implemented Column Sorting for customer search results
+- Created SortableTableHeader component with visual sort indicators (up/down arrows)
+- Added sortable columns: Name, Email, Created At (Phone is not sortable)
+- Implemented sort state management in page.tsx:
+  - Added sortBy and sortOrder state variables
+  - Created handleSortChange function with toggle logic (asc <-> desc)
+  - Integrated sort parameters into all API calls (search, pagination, page size change)
+  - URL parameters updated with sortBy and sortOrder
+- Sort indicators show active column with primary color, inactive columns muted
+- Sort state preserved across pagination, page size changes, and new searches
+- Comprehensive test suite added with 33+ new tests for sorting functionality
+- All 118 tests passing with 95.05% statement coverage
+- Build verified successfully in Docker
+- Frontend service running and accessible
 
-Files changed:
-- CustomerApi/CustomerApi.csproj (enabled XML doc generation, added Swashbuckle.AspNetCore 6.8.1)
-- CustomerApi/Program.cs (configured Swagger/OpenAPI with XML comments support)
-- CustomerApi/DTOs/CreateCustomerDto.cs (added XML comments)
-- CustomerApi/DTOs/UpdateCustomerDto.cs (added XML comments)
-- CustomerApi/DTOs/CustomerResponseDto.cs (added XML comments)
-- CustomerApi/DTOs/PaginatedResponseDto.cs (added XML comments)
+**Files Modified:**
+- src/frontend/src/components/CustomerResultsTable.tsx (Added SortableTableHeader component, updated props)
+- src/frontend/src/components/CustomerResultsTable.test.tsx (Added comprehensive sorting tests)
+- src/frontend/src/app/page.tsx (Added sort state, handleSortChange, integrated sort into all API calls)
 
 **Learnings for future iterations:**
-- Swashbuckle.AspNetCore 10.x requires Microsoft.OpenApi >= 2.3.0 which changed namespace structure
-- For .NET 10 projects, Swashbuckle.AspNetCore 6.8.1 is stable and uses Microsoft.OpenApi 1.6.14
-- Microsoft.OpenApi.Models namespace is available in version 1.6.x but was restructured in 2.x
-- When adding Swagger, both AddSwaggerGen and AddEndpointsApiExplorer services are needed
-- XML comments file path is set using Assembly.GetExecutingAssembly().GetName().Name
-- Swagger UI RoutePrefix can be set to "swagger" for clean /swagger URL
-- Controller methods already had ProducesResponseType attributes from previous stories which help Swagger
-- XML comments enhance Swagger UI with descriptions for endpoints and model properties
-- Generic types in XML comments use <typeparam> tag for type parameter documentation
-- NoWarn setting prevents CS1591 warnings for public types without XML documentation
+- SortableTableHeader is a reusable component that renders clickable column headers with sort indicators
+- Sort indicators use SVG arrows with conditional styling: text-primary when active, text-muted-foreground/30 when inactive
+- handleSortChange toggles between asc/desc when clicking the same column, defaults to asc for new column
+- Sort parameters must be included in all API calls: handleSearch, handlePageChange, handlePageSizeChange
+- URL state management via updateURL ensures browser back/forward works with sorting
+- Phone column is intentionally not sortable (backend doesn't support it)
+- Table headers use cursor-pointer and select-none classes for better UX
+- Hover effect on sortable headers: hover:bg-muted/50
+- All sort state is synchronized between: local state, URL params, and API calls
+- Tests verify: clickability, sort indicators, click handlers, state combinations, and interaction with loading/error/empty states
 ---
+
+## 2026-01-15 23:05 - US-010
+Thread: https://ampcode.com/threads/$AMP_CURRENT_THREAD_ID
+- Implemented Customer Details View feature
+- Created shadcn/ui Dialog component using Radix UI primitives (@radix-ui/react-dialog)
+- Built CustomerDetailsDialog component with comprehensive functionality:
+  - Fetches customer details by ID using customerApi.getCustomerById()
+  - Displays all customer fields: Name, Email, Phone, Address, Created At, Updated At
+  - Handles null/optional fields gracefully (displays 'N/A' for null phone/address)
+  - Loading state with animated spinner during API calls
+  - Error states: specific message for 404 not found, generic message for other errors
+  - Close button (X icon) in top-right corner
+  - Proper date formatting using toLocaleString with en-US locale
+  - Modal overlay with darkened background
+- Integrated dialog into page.tsx:
+  - Added selectedCustomerId and isDialogOpen state variables
+  - Implemented handleCustomerClick to open dialog
+  - Dialog component mounted at root level
+- Comprehensive test suite with 134 total tests passing
+- Achieved 93.1% overall code coverage (88.46% for CustomerDetailsDialog component)
+- Build successful with Next.js production optimization
+- Browser verification completed using dev-browser skill:
+  - Dialog opens correctly when clicking customer row
+  - All fields display properly with correct data
+  - Close button functions correctly
+  - Loading and error states work as expected
+
+**Files Created:**
+- src/frontend/src/components/ui/dialog.tsx (shadcn/ui Dialog with all subcomponents)
+- src/frontend/src/components/CustomerDetailsDialog.tsx (Main dialog component)
+- src/frontend/src/components/CustomerDetailsDialog.test.tsx (Comprehensive test suite)
+
+**Files Modified:**
+- src/frontend/src/app/page.tsx (Added dialog state and integration)
+- prd.json (Marked US-010 as passes: true)
+
+**Learnings for future iterations:**
+- Dialog component uses Radix UI Portal to render outside the main DOM hierarchy
+- @radix-ui/react-dialog was already installed in package.json dependencies
+- Dialog state management requires both customerId and open boolean flags
+- useEffect handles dialog opening/closing and resets state when dialog closes
+- Customer details are fetched fresh each time dialog opens (no caching)
+- Date formatting uses toLocaleString() for user-friendly display
+- Error handling differentiates between 404 (customer not found) and other errors
+- Tests should use findBy queries for async elements instead of getBy with waitFor
+- Dialog Portal rendering requires proper Next.js client-side hydration
+- Production build works differently than dev - restart may be needed to see changes
+- Dialog components require role="dialog" and proper ARIA attributes for accessibility
+- Close button uses sr-only span for screen reader accessibility
+- Loading spinner uses role="status" for accessibility
+---
+
+## 2026-01-16 08:25 - US-011
+Thread: https://ampcode.com/threads/$AMP_CURRENT_THREAD_ID
+- Implemented Error Handling and User Feedback feature
+- Created Toast notification system using shadcn/ui and Radix UI
+- Implemented comprehensive error handling with retry mechanism
+- Added user-friendly error messages for all HTTP status codes
+- Created email validation in SearchForm with inline error display
+- Integrated toast notifications throughout the application
+- Added 30+ comprehensive tests for error handling and retry logic
+- Build successful, all tests passing
+
+**Files Created:**
+- src/frontend/src/components/ui/toast.tsx (shadcn/ui Toast component with variants)
+- src/frontend/src/components/ui/toaster.tsx (Toaster component for rendering toasts)
+- src/frontend/src/hooks/useToast.ts (Toast state management hook)
+
+**Files Modified:**
+- src/frontend/src/app/layout.tsx (Added Toaster to root layout)
+- src/frontend/src/app/page.tsx (Integrated toast notifications for all error scenarios)
+- src/frontend/src/components/SearchForm.tsx (Added email validation with error display)
+- src/frontend/src/lib/api/customerApi.ts (Enhanced with retry mechanism and user-friendly messages)
+- src/frontend/src/lib/api/customerApi.test.ts (Added comprehensive error handling tests)
+
+**Learnings for future iterations:**
+- Toast notifications use Radix UI @radix-ui/react-toast primitive
+- Toast state is managed globally using a reducer pattern with listeners for React updates
+- Retry mechanism uses exponential backoff: 1s, 2s, 4s (configurable via maxRetries and retryDelay)
+- Retryable errors: 408, 429, 500+, and network errors (TypeError)
+- Non-retryable errors: 400, 401, 403, 404 (client errors)
+- User-friendly error messages mapped from HTTP status codes using getUserFriendlyErrorMessage()
+- ApiError class enhanced with isRetryable flag to indicate if error can be retried
+- Toast variants: 'default' and 'destructive' (for errors)
+- Email validation uses simple regex: /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+- Validation errors show both inline (in form) and as toast notifications
+- All error handlers in page.tsx now show toast notifications with descriptive titles
+- Jest fake timers used for testing retry mechanism with exponential backoff
+- Tests verify: retry count, exponential backoff timing, retryable vs non-retryable errors
+- Build successful with Next.js production optimization
+- Toast timeout is 5 seconds (TOAST_REMOVE_DELAY = 5000ms)
+- Maximum 5 toasts can be shown simultaneously (TOAST_LIMIT = 5)
+---
+

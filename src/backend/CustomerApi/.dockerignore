@@ -1,0 +1,42 @@
+# Build artifacts
+bin/
+obj/
+out/
+
+# IDE and editor files
+.vs/
+.vscode/
+*.user
+*.suo
+*.userprefs
+.idea/
+
+# Testing
+TestResults/
+*.trx
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# Documentation
+*.md
+README*
+
+# Development files
+*.Development.json
+launchSettings.json
+
+# Logs
+*.log
+logs/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.temp
+*.cache

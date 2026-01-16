@@ -18,5 +18,44 @@ services:
       timeout: 5s
       retries: 5
 
+  backend:
+    build:
+      context: ./src/backend/CustomerApi
+      dockerfile: Dockerfile
+    container_name: customerapi-backend
+    restart: always
+    environment:
+      - ASPNETCORE_URLS=http://+:5000
+      - ConnectionStrings__DefaultConnection=Server=mysql;Port=3306;Database=${MYSQL_DATABASE};User=root;Password=${MYSQL_ROOT_PASSWORD};
+    ports:
+      - "5000:5000"
+    depends_on:
+      mysql:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  frontend:
+    build:
+      context: ./src/frontend
+      dockerfile: Dockerfile
+      target: dev
+    container_name: customerapi-frontend
+    restart: always
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:5000
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./src/frontend:/app
+      - /app/node_modules
+      - /app/.next
+    depends_on:
+      - backend
+
 volumes:
   mysql-data:
