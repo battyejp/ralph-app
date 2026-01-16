@@ -1,216 +1,123 @@
 {
-  "project": "CustomerSearchApp",
-  "branchName": "ralph/customer-search-frontend",
-  "description": "Customer Search Web Frontend - Next.js interface for searching and viewing customers via Customer API with Docker Compose orchestration",
+  "project": "Customer Search Application",
+  "branchName": "ralph/customer-creation",
+  "description": "Customer Creation via Web UI - Enable users to create new customers through the web interface with form validation, toast notifications, and multiple entry points (modal and dedicated page)",
   "userStories": [
     {
       "id": "US-001",
-      "title": "Initialize Next.js Frontend Project",
-      "description": "As a developer, I need a Next.js project structure so I can build the customer search interface.",
+      "title": "Add duplicate email handling to backend CreateCustomer endpoint",
+      "description": "As a developer, I need the backend to return 409 Conflict when attempting to create a customer with an existing email so the frontend can display appropriate error messages.",
       "acceptanceCriteria": [
-        "Create Next.js project in `src/frontend` directory",
-        "Configure TypeScript",
-        "Install and configure shadcn/ui component library",
-        "Set up project structure (components, lib, app directories)",
-        "Configure environment variables for API URL",
-        "Add .gitignore for frontend",
-        "Project builds successfully with `npm run build`",
-        "Development server runs with `npm run dev`",
+        "CreateCustomer endpoint checks if email already exists before creating",
+        "Returns 409 Conflict with message 'A customer with this email already exists' if duplicate",
+        "Add ICustomerRepository.EmailExistsAsync(string email) method",
+        "Add unit tests for duplicate email scenario",
         "Code builds successfully",
-        "All Tests pass with code coverage greater than 80%"
+        "All tests pass with code coverage greater than 80%"
       ],
       "priority": 1,
       "passes": true,
-      "notes": "Project structure created manually. Build verification will occur via Docker in US-002 and US-004 since Node.js is not installed on host."
+      "notes": ""
     },
     {
       "id": "US-002",
-      "title": "Create Dockerfile for Frontend",
-      "description": "As a developer, I need a Dockerfile for the frontend to enable containerized development.",
+      "title": "Add createCustomer method to frontend API client",
+      "description": "As a developer, I need a frontend API method to create customers so the UI can communicate with the backend.",
       "acceptanceCriteria": [
-        "Create Dockerfile in src/frontend directory",
-        "Use Node.js 20+ Alpine base image",
-        "Configure build stages for development with hot reload support",
-        "Install dependencies and expose port 3000",
-        "Dockerfile builds successfully",
+        "Add CreateCustomerData type to types.ts with fields: name (string), email (string), phone (string optional), address (string optional)",
+        "Add createCustomer(data: CreateCustomerData) method to CustomerApiClient class",
+        "Method sends POST request to /api/customers with JSON body",
+        "Returns the created Customer object on success",
+        "Handles validation errors (400) and extracts field-level error messages into ApiError.errors",
+        "Handles duplicate email error (409) with user-friendly message",
+        "Add comprehensive unit tests for createCustomer method",
         "Code builds successfully",
-        "All Tests pass with code coverage greater than 80%"
+        "All tests pass with code coverage greater than 80%"
       ],
       "priority": 2,
-      "passes": true,
-      "notes": "Created multi-stage Dockerfile with development (hot reload), build, and production stages. Added .dockerignore to optimize build context."
+      "passes": false,
+      "notes": ""
     },
     {
       "id": "US-003",
-      "title": "Create Dockerfile for Backend API",
-      "description": "As a developer, I need a Dockerfile for the backend API to enable containerized development.",
+      "title": "Create CustomerForm component with validation",
+      "description": "As a user, I want a form to enter customer details with inline validation so I can create new customers and see errors clearly.",
       "acceptanceCriteria": [
-        "Create Dockerfile in src/backend/CustomerApi directory",
-        "Use .NET 8 SDK base image",
-        "Configure build and runtime stages",
-        "Expose port 5000 for API",
-        "Dockerfile builds successfully",
+        "Create CustomerForm.tsx component in src/components/",
+        "Form has fields: Name (required), Email (required), Phone (optional), Address (optional)",
+        "Use existing shadcn/ui components (Input, Label, Button)",
+        "Display inline error messages beneath each invalid field with red text",
+        "Show client-side validation on blur and submit (required fields, email format)",
+        "Show server-side validation errors after failed submission",
+        "Errors clear when user corrects the field",
+        "Submit button shows loading/disabled state during API call",
+        "Form accepts onSuccess callback prop for post-submission handling",
+        "Form is responsive (stacked layout)",
+        "Add comprehensive unit tests for CustomerForm",
         "Code builds successfully",
-        "All Tests pass with code coverage greater than 80%"
+        "All tests pass with code coverage greater than 80%",
+        "Verify in browser using dev-browser skill"
       ],
       "priority": 3,
-      "passes": true,
-      "notes": "Created multi-stage Dockerfile using .NET 10 SDK and ASP.NET runtime. Added .dockerignore to optimize build context. Successfully built and verified Docker image."
+      "passes": false,
+      "notes": ""
     },
     {
       "id": "US-004",
-      "title": "Configure Docker Compose for All Services",
-      "description": "As a developer, I want all services running in Docker Compose so I can start the entire stack with one command.",
+      "title": "Add toast notifications to CustomerForm",
+      "description": "As a user, I want toast notifications for form submission results so I have clear feedback on success or failure.",
       "acceptanceCriteria": [
-        "Add backend API service to docker-compose.yml",
-        "Add frontend service to docker-compose.yml with volume mounts for hot reload",
-        "Configure service dependencies (frontend depends on backend, backend depends on mysql)",
-        "Set environment variables for inter-service communication",
-        "Frontend accessible at http://localhost:3000",
-        "Backend accessible at http://localhost:5000",
-        "MySQL accessible at localhost:3306",
-        "All services start successfully with `docker-compose up`",
-        "Hot reload works when editing frontend code",
+        "Show success toast when customer is created: 'Customer created successfully'",
+        "Show error toast on submission failure with summary message",
+        "Use existing useToast hook and destructive variant for errors",
+        "Toast appears in addition to inline validation errors",
+        "Update CustomerForm tests to verify toast behavior",
         "Code builds successfully",
-        "All Tests pass with code coverage greater than 80%"
+        "All tests pass with code coverage greater than 80%",
+        "Verify in browser using dev-browser skill"
       ],
       "priority": 4,
-      "passes": true,
-      "notes": "Configured docker-compose.yml with backend (port 5000) and frontend (port 3000) services. Frontend uses volume mounts for hot reload. All services start successfully with proper dependencies and health checks."
+      "passes": false,
+      "notes": ""
     },
     {
       "id": "US-005",
-      "title": "Create API Client Service Layer",
-      "description": "As a developer, I need a typed API client to communicate with the Customer API.",
+      "title": "Add Create Customer button and modal to search page",
+      "description": "As a user, I want a 'Create Customer' button on the search page so I can quickly add new customers without leaving the page.",
       "acceptanceCriteria": [
-        "Create TypeScript interfaces matching API DTOs (Customer, PaginatedResponse)",
-        "Implement API client service with methods: searchCustomers, getCustomerById",
-        "Configure base URL from environment variables",
-        "Add proper error handling for network failures",
-        "Add request/response type safety",
+        "Add 'Create Customer' button in search page header area",
+        "Button opens a Dialog modal containing the CustomerForm",
+        "Modal has title: 'Create New Customer'",
+        "Modal can be closed via X button or clicking outside",
+        "On successful creation, modal closes and opens CustomerDetailsDialog showing new customer",
+        "Button is visible on both desktop and mobile layouts",
+        "Add unit tests for CreateCustomerDialog component",
         "Code builds successfully",
-        "All Tests pass with code coverage greater than 80%",
-        "Verify API connectivity with test request"
+        "All tests pass with code coverage greater than 80%",
+        "Verify in browser using dev-browser skill"
       ],
       "priority": 5,
-      "passes": true,
-      "notes": "Created TypeScript interfaces, API client service, comprehensive error handling, and Jest testing framework with 97.82% coverage. All 15 tests passing. Build successful. API connectivity verified."
+      "passes": false,
+      "notes": ""
     },
     {
       "id": "US-006",
-      "title": "Build Advanced Search Form",
-      "description": "As a user, I want to search for customers using multiple filters so I can find specific customers quickly.",
+      "title": "Create dedicated customer creation page",
+      "description": "As a user, I want a dedicated page for creating customers so I have a full-screen experience when needed.",
       "acceptanceCriteria": [
-        "Create search form component with shadcn/ui Input components",
-        "Add filter fields: general search (name/email), email exact match, phone search",
-        "Add clear/reset filters button",
-        "Add search button that triggers API call",
-        "Implement debounced search for better UX",
-        "Form is responsive and works on mobile devices",
+        "Create new page at /customers/new using Next.js App Router",
+        "Page contains CustomerForm component with heading 'Create New Customer'",
+        "Include 'Back to Search' link/button for navigation to home",
+        "On successful creation, navigate to home and open CustomerDetailsDialog for new customer",
+        "Page is responsive and follows existing layout patterns",
+        "Add link to dedicated page from search page (e.g., in Create Customer modal or as secondary option)",
         "Code builds successfully",
-        "All Tests pass with code coverage greater than 80%",
+        "All tests pass with code coverage greater than 80%",
         "Verify in browser using dev-browser skill"
       ],
       "priority": 6,
-      "passes": true,
-      "notes": "Implemented SearchForm component with shadcn/ui components (Button, Input, Label). Created useDebounce hook for search input. Form includes three filter fields with responsive design. Comprehensive tests with 96.42% branch coverage (45 tests passing). Verified in browser - all functionality working correctly."
-    },
-    {
-      "id": "US-007",
-      "title": "Display Search Results Table",
-      "description": "As a user, I want to see search results in a clear table format so I can quickly scan customer information.",
-      "acceptanceCriteria": [
-        "Create results table component using shadcn/ui Table",
-        "Display columns: Name, Email, Phone, Created At",
-        "Show loading state while fetching results",
-        "Show empty state when no results found",
-        "Show error state when API request fails",
-        "Make customer rows clickable to view details",
-        "Table is responsive on mobile (card view for small screens)",
-        "Code builds successfully",
-        "All Tests pass with code coverage greater than 80%",
-        "Verify in browser using dev-browser skill"
-      ],
-      "priority": 7,
-      "passes": true,
-      "notes": "Implemented CustomerResultsTable component with all states (loading, empty, error, success). Desktop table view and mobile card view. 72 tests passing with 97.05% coverage. Browser verified."
-    },
-    {
-      "id": "US-008",
-      "title": "Implement Pagination Controls",
-      "description": "As a user, I want to navigate through pages of results so I can browse all customers without overwhelming the interface.",
-      "acceptanceCriteria": [
-        "Create pagination component using shadcn/ui",
-        "Display current page, total pages, and total count",
-        "Add previous/next page buttons",
-        "Add page size selector (10, 25, 50, 100)",
-        "Disable previous on first page, next on last page",
-        "Preserve search filters when changing pages",
-        "Update URL with pagination parameters",
-        "Code builds successfully",
-        "All Tests pass with code coverage greater than 80%",
-        "Verify in browser using dev-browser skill"
-      ],
-      "priority": 8,
-      "passes": true,
-      "notes": "Implemented PaginationControls component with shadcn/ui Select. All acceptance criteria met. 97 tests passing with 94.94% coverage. URL parameters properly managed with Next.js useSearchParams in Suspense boundary."
-    },
-    {
-      "id": "US-009",
-      "title": "Add Column Sorting",
-      "description": "As a user, I want to sort results by different columns so I can organize data according to my needs.",
-      "acceptanceCriteria": [
-        "Add clickable column headers for Name, Email, Created At",
-        "Show sort indicator (up/down arrow) on active column",
-        "Toggle between ascending/descending on click",
-        "Send sortBy and sortOrder parameters to API",
-        "Preserve sort state when paginating or filtering",
-        "Update URL with sort parameters",
-        "Code builds successfully",
-        "All Tests pass with code coverage greater than 80%",
-        "Verify in browser using dev-browser skill"
-      ],
-      "priority": 9,
-      "passes": true,
-      "notes": "Implemented sortable column headers with visual indicators. All tests passing (118 tests, 95.05% coverage). Sort state preserved in URL and across pagination/filtering."
-    },
-    {
-      "id": "US-010",
-      "title": "Customer Details View",
-      "description": "As a user, I want to view full customer details so I can see all available information about a customer.",
-      "acceptanceCriteria": [
-        "Create customer details modal using shadcn/ui Dialog",
-        "Display all customer fields: Name, Email, Phone, Address, Created At, Updated At",
-        "Handle optional fields gracefully (show 'N/A' for null values)",
-        "Add close button to return to search results",
-        "Show loading state while fetching details",
-        "Show error state if customer not found",
-        "Code builds successfully",
-        "All Tests pass with code coverage greater than 80%",
-        "Verify in browser using dev-browser skill"
-      ],
-      "priority": 10,
-      "passes": true,
-      "notes": "Implemented CustomerDetailsDialog with shadcn/ui Dialog component. All acceptance criteria met. 134 tests passing with 93.1% overall coverage (88.46% for dialog component). Browser verified."
-    },
-    {
-      "id": "US-011",
-      "title": "Error Handling and User Feedback",
-      "description": "As a user, I want clear feedback when things go wrong so I understand what happened and what to do next.",
-      "acceptanceCriteria": [
-        "Show toast notifications for errors using shadcn/ui Toast",
-        "Display user-friendly error messages (not technical stack traces)",
-        "Handle network errors (API unreachable)",
-        "Handle API errors (400, 404, 500)",
-        "Add retry mechanism for failed requests",
-        "Show validation errors for invalid search inputs",
-        "Code builds successfully",
-        "All Tests pass with code coverage greater than 80%",
-        "Verify in browser using dev-browser skill"
-      ],
-      "priority": 11,
-      "passes": true,
-      "notes": "Implemented comprehensive error handling with toast notifications, retry mechanism (3 retries with exponential backoff), user-friendly error messages for all HTTP status codes, email validation, and 30+ new tests. Build successful."
+      "passes": false,
+      "notes": ""
     }
   ]
 }
