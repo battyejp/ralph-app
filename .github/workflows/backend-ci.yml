@@ -39,7 +39,7 @@ jobs:
         working-directory: src/backend
 
       - name: Run tests with coverage
-        run: dotnet test --configuration Release --no-build --verbosity normal --collect:"XPlat Code Coverage" --results-directory ./coverage
+        run: dotnet test --configuration Release --no-build --verbosity normal --collect:"XPlat Code Coverage" --results-directory ./coverage --settings coverage.runsettings
         working-directory: src/backend
 
       - name: Generate coverage report
