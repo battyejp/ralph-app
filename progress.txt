@@ -348,3 +348,45 @@ Thread: https://ampcode.com/threads/$AMP_CURRENT_THREAD_ID
 - Loading spinner uses role="status" for accessibility
 ---
 
+## 2026-01-16 08:25 - US-011
+Thread: https://ampcode.com/threads/$AMP_CURRENT_THREAD_ID
+- Implemented Error Handling and User Feedback feature
+- Created Toast notification system using shadcn/ui and Radix UI
+- Implemented comprehensive error handling with retry mechanism
+- Added user-friendly error messages for all HTTP status codes
+- Created email validation in SearchForm with inline error display
+- Integrated toast notifications throughout the application
+- Added 30+ comprehensive tests for error handling and retry logic
+- Build successful, all tests passing
+
+**Files Created:**
+- src/frontend/src/components/ui/toast.tsx (shadcn/ui Toast component with variants)
+- src/frontend/src/components/ui/toaster.tsx (Toaster component for rendering toasts)
+- src/frontend/src/hooks/useToast.ts (Toast state management hook)
+
+**Files Modified:**
+- src/frontend/src/app/layout.tsx (Added Toaster to root layout)
+- src/frontend/src/app/page.tsx (Integrated toast notifications for all error scenarios)
+- src/frontend/src/components/SearchForm.tsx (Added email validation with error display)
+- src/frontend/src/lib/api/customerApi.ts (Enhanced with retry mechanism and user-friendly messages)
+- src/frontend/src/lib/api/customerApi.test.ts (Added comprehensive error handling tests)
+
+**Learnings for future iterations:**
+- Toast notifications use Radix UI @radix-ui/react-toast primitive
+- Toast state is managed globally using a reducer pattern with listeners for React updates
+- Retry mechanism uses exponential backoff: 1s, 2s, 4s (configurable via maxRetries and retryDelay)
+- Retryable errors: 408, 429, 500+, and network errors (TypeError)
+- Non-retryable errors: 400, 401, 403, 404 (client errors)
+- User-friendly error messages mapped from HTTP status codes using getUserFriendlyErrorMessage()
+- ApiError class enhanced with isRetryable flag to indicate if error can be retried
+- Toast variants: 'default' and 'destructive' (for errors)
+- Email validation uses simple regex: /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+- Validation errors show both inline (in form) and as toast notifications
+- All error handlers in page.tsx now show toast notifications with descriptive titles
+- Jest fake timers used for testing retry mechanism with exponential backoff
+- Tests verify: retry count, exponential backoff timing, retryable vs non-retryable errors
+- Build successful with Next.js production optimization
+- Toast timeout is 5 seconds (TOAST_REMOVE_DELAY = 5000ms)
+- Maximum 5 toasts can be shown simultaneously (TOAST_LIMIT = 5)
+---
+
