@@ -56,7 +56,36 @@ describe('CreateCustomerDialog', () => {
 
       expect(screen.getByRole('dialog')).toBeInTheDocument();
       expect(screen.getByText('Create New Customer')).toBeInTheDocument();
-      expect(screen.getByText('Fill in the details below to add a new customer.')).toBeInTheDocument();
+      expect(screen.getByText(/Fill in the details below to add a new customer/)).toBeInTheDocument();
+    });
+
+    it('should render link to dedicated page', () => {
+      const mockOnOpenChange = jest.fn();
+      render(
+        <CreateCustomerDialog
+          open={true}
+          onOpenChange={mockOnOpenChange}
+        />
+      );
+
+      const fullFormLink = screen.getByRole('link', { name: /Open full form/i });
+      expect(fullFormLink).toBeInTheDocument();
+      expect(fullFormLink).toHaveAttribute('href', '/customers/new');
+    });
+
+    it('should close dialog when clicking the dedicated page link', () => {
+      const mockOnOpenChange = jest.fn();
+      render(
+        <CreateCustomerDialog
+          open={true}
+          onOpenChange={mockOnOpenChange}
+        />
+      );
+
+      const fullFormLink = screen.getByRole('link', { name: /Open full form/i });
+      fireEvent.click(fullFormLink);
+
+      expect(mockOnOpenChange).toHaveBeenCalledWith(false);
     });
 
     it('should render CustomerForm inside the dialog', () => {

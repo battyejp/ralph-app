@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import {
   Dialog,
   DialogContent,
@@ -42,6 +43,14 @@ export function CreateCustomerDialog({
           <DialogTitle>Create New Customer</DialogTitle>
           <DialogDescription>
             Fill in the details below to add a new customer.
+            Prefer a full page?{' '}
+            <Link
+              href="/customers/new"
+              className="text-primary underline hover:text-primary/80"
+              onClick={() => onOpenChange(false)}
+            >
+              Open full form
+            </Link>
           </DialogDescription>
         </DialogHeader>
         <CustomerForm onSuccess={handleSuccess} />

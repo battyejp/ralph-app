@@ -49,12 +49,21 @@ function HomeContent() {
     const size = parseInt(searchParams.get('pageSize') || '25', 10);
     const urlSortBy = searchParams.get('sortBy') as 'name' | 'email' | 'createdAt' | null;
     const urlSortOrder = searchParams.get('sortOrder') as 'asc' | 'desc' | null;
+    const showCustomerId = searchParams.get('showCustomer');
 
     setCurrentPage(page);
     setPageSize(size);
     if (urlSortBy) setSortBy(urlSortBy);
     if (urlSortOrder) setSortOrder(urlSortOrder);
-  }, [searchParams]);
+
+    // If showCustomer parameter is present, open the customer details dialog
+    if (showCustomerId) {
+      setSelectedCustomerId(showCustomerId);
+      setIsDialogOpen(true);
+      // Clean up the URL by removing the showCustomer parameter
+      router.replace('/');
+    }
+  }, [searchParams, router]);
 
   const updateURL = (params: CustomerSearchParams) => {
     const urlParams = new URLSearchParams();
