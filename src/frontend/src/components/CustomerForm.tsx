@@ -4,6 +4,7 @@ import { useState, useCallback } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
+import { useToast } from '@/hooks/useToast';
 import { customerApi, ApiError } from '@/lib/api/customerApi';
 import type { Customer, CreateCustomerData } from '@/lib/api/types';
 
@@ -49,6 +50,7 @@ export function CustomerForm({ onSuccess }: CustomerFormProps) {
     address: false,
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const { toast } = useToast();
 
   /**
    * Validates a single field and returns error message if invalid
@@ -168,6 +170,12 @@ export function CustomerForm({ onSuccess }: CustomerFormProps) {
 
       const customer = await customerApi.createCustomer(data);
 
+      // Show success toast
+      toast({
+        title: 'Customer created successfully',
+        description: `${customer.name} has been added.`,
+      });
+
       // Clear form on success
       setName('');
       setEmail('');
@@ -202,12 +210,26 @@ export function CustomerForm({ onSuccess }: CustomerFormProps) {
             ...prev,
             ...serverErrors,
           }));
+
+          // Show error toast for validation errors
+          toast({
+            title: 'Failed to create customer',
+            description: 'Please fix the validation errors and try again.',
+            variant: 'destructive',
+          });
         } else {
           // General API error - display as general form error
           setErrors((prev) => ({
             ...prev,
             email: error.message,
           }));
+
+          // Show error toast for general API errors
+          toast({
+            title: 'Failed to create customer',
+            description: error.message,
+            variant: 'destructive',
+          });
         }
       } else {
         // Unknown error
@@ -215,6 +237,13 @@ export function CustomerForm({ onSuccess }: CustomerFormProps) {
           ...prev,
           email: 'An unexpected error occurred. Please try again.',
         }));
+
+        // Show error toast for unknown errors
+        toast({
+          title: 'Failed to create customer',
+          description: 'An unexpected error occurred. Please try again.',
+          variant: 'destructive',
+        });
       }
     } finally {
       setIsSubmitting(false);

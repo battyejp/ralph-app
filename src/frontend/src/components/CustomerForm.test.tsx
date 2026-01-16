@@ -2,6 +2,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { CustomerForm } from './CustomerForm';
 import { customerApi, ApiError } from '@/lib/api/customerApi';
+import { useToast } from '@/hooks/useToast';
 import type { Customer } from '@/lib/api/types';
 
 // Mock the customerApi
@@ -22,6 +23,16 @@ jest.mock('@/lib/api/customerApi', () => ({
   },
 }));
 
+// Mock the useToast hook
+const mockToast = jest.fn();
+jest.mock('@/hooks/useToast', () => ({
+  useToast: () => ({
+    toast: mockToast,
+    toasts: [],
+    dismiss: jest.fn(),
+  }),
+}));
+
 const mockCustomerApi = customerApi as jest.Mocked<typeof customerApi>;
 
 describe('CustomerForm', () => {
@@ -38,6 +49,7 @@ describe('CustomerForm', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    mockToast.mockClear();
   });
 
   describe('Rendering', () => {
@@ -577,6 +589,135 @@ describe('CustomerForm', () => {
       });
 
       // Should not throw error when onSuccess is undefined
+    });
+  });
+
+  describe('Toast Notifications', () => {
+    it('should show success toast when customer is created', async () => {
+      mockCustomerApi.createCustomer.mockResolvedValue(mockCustomer);
+      render(<CustomerForm />);
+
+      fireEvent.change(screen.getByLabelText(/name/i), { target: { value: 'John Doe' } });
+      fireEvent.change(screen.getByLabelText(/email/i), { target: { value: 'john@example.com' } });
+
+      const submitButton = screen.getByRole('button', { name: /create customer/i });
+      fireEvent.click(submitButton);
+
+      await waitFor(() => {
+        expect(mockToast).toHaveBeenCalledWith({
+          title: 'Customer created successfully',
+          description: 'John Doe has been added.',
+        });
+      });
+    });
+
+    it('should show error toast with validation errors message', async () => {
+      const serverError = new ApiError('Validation failed', 400, {
+        Name: ['Name must be at least 2 characters'],
+      });
+      mockCustomerApi.createCustomer.mockRejectedValue(serverError);
+      render(<CustomerForm />);
+
+      fireEvent.change(screen.getByLabelText(/name/i), { target: { value: 'J' } });
+      fireEvent.change(screen.getByLabelText(/email/i), { target: { value: 'test@test.com' } });
+
+      const submitButton = screen.getByRole('button', { name: /create customer/i });
+      fireEvent.click(submitButton);
+
+      await waitFor(() => {
+        expect(mockToast).toHaveBeenCalledWith({
+          title: 'Failed to create customer',
+          description: 'Please fix the validation errors and try again.',
+          variant: 'destructive',
+        });
+      });
+    });
+
+    it('should show error toast for duplicate email error', async () => {
+      const duplicateError = new ApiError('A customer with this email already exists', 409);
+      mockCustomerApi.createCustomer.mockRejectedValue(duplicateError);
+      render(<CustomerForm />);
+
+      fireEvent.change(screen.getByLabelText(/name/i), { target: { value: 'John Doe' } });
+      fireEvent.change(screen.getByLabelText(/email/i), { target: { value: 'john@example.com' } });
+
+      const submitButton = screen.getByRole('button', { name: /create customer/i });
+      fireEvent.click(submitButton);
+
+      await waitFor(() => {
+        expect(mockToast).toHaveBeenCalledWith({
+          title: 'Failed to create customer',
+          description: 'A customer with this email already exists',
+          variant: 'destructive',
+        });
+      });
+    });
+
+    it('should show error toast for unknown errors', async () => {
+      mockCustomerApi.createCustomer.mockRejectedValue(new Error('Unknown error'));
+      render(<CustomerForm />);
+
+      fireEvent.change(screen.getByLabelText(/name/i), { target: { value: 'John Doe' } });
+      fireEvent.change(screen.getByLabelText(/email/i), { target: { value: 'john@example.com' } });
+
+      const submitButton = screen.getByRole('button', { name: /create customer/i });
+      fireEvent.click(submitButton);
+
+      await waitFor(() => {
+        expect(mockToast).toHaveBeenCalledWith({
+          title: 'Failed to create customer',
+          description: 'An unexpected error occurred. Please try again.',
+          variant: 'destructive',
+        });
+      });
+    });
+
+    it('should show toast in addition to inline validation errors', async () => {
+      const serverError = new ApiError('Validation failed', 400, {
+        Name: ['Name must be at least 2 characters'],
+        Email: ['Email format is invalid'],
+      });
+      mockCustomerApi.createCustomer.mockRejectedValue(serverError);
+      render(<CustomerForm />);
+
+      fireEvent.change(screen.getByLabelText(/name/i), { target: { value: 'J' } });
+      fireEvent.change(screen.getByLabelText(/email/i), { target: { value: 'test@test.com' } });
+
+      const submitButton = screen.getByRole('button', { name: /create customer/i });
+      fireEvent.click(submitButton);
+
+      await waitFor(() => {
+        // Check that inline errors are displayed
+        expect(screen.getByText(/name must be at least 2 characters/i)).toBeInTheDocument();
+        expect(screen.getByText(/email format is invalid/i)).toBeInTheDocument();
+
+        // Check that toast was also called
+        expect(mockToast).toHaveBeenCalledWith({
+          title: 'Failed to create customer',
+          description: 'Please fix the validation errors and try again.',
+          variant: 'destructive',
+        });
+      });
+    });
+
+    it('should use destructive variant for error toasts', async () => {
+      const serverError = new ApiError('Server error', 500);
+      mockCustomerApi.createCustomer.mockRejectedValue(serverError);
+      render(<CustomerForm />);
+
+      fireEvent.change(screen.getByLabelText(/name/i), { target: { value: 'John Doe' } });
+      fireEvent.change(screen.getByLabelText(/email/i), { target: { value: 'john@example.com' } });
+
+      const submitButton = screen.getByRole('button', { name: /create customer/i });
+      fireEvent.click(submitButton);
+
+      await waitFor(() => {
+        expect(mockToast).toHaveBeenCalledWith(
+          expect.objectContaining({
+            variant: 'destructive',
+          })
+        );
+      });
     });
   });
 });
