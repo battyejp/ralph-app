@@ -24,6 +24,43 @@
 
 ---
 
+## 2026-01-16 - US-006
+- **What was implemented**: Created dedicated customer creation page at /customers/new
+- **Files created**:
+  - `src/frontend/src/app/customers/new/page.tsx` - Full page for customer creation with:
+    - Heading "Create New Customer" and description
+    - CustomerForm component for data entry
+    - "Back to Search" link with arrow button navigating to home
+    - Success flow that navigates to home with `?showCustomer=<id>` param
+    - Responsive layout matching existing patterns (p-6 md:p-12 lg:p-24)
+  - `src/frontend/src/app/customers/new/page.test.tsx` - 17 comprehensive tests covering:
+    - Page rendering (heading, description, back link, form)
+    - Page layout (main element, responsive padding, max-width)
+    - Form submission success (navigation with showCustomer param, toast)
+    - Form submission failure (no navigation on validation error or API error, error toast)
+    - Accessibility (heading hierarchy, form labels)
+    - Responsive design (padding classes, container width)
+- **Files changed**:
+  - `src/frontend/src/app/page.tsx` - Added:
+    - Reading `showCustomer` URL parameter from searchParams
+    - Opening CustomerDetailsDialog when showCustomer param present
+    - Cleaning up URL by calling router.replace('/') after showing dialog
+  - `src/frontend/src/components/CreateCustomerDialog.tsx` - Added:
+    - Import for next/link
+    - Link to /customers/new in dialog description ("Prefer a full page? Open full form")
+    - onClick handler to close dialog when link is clicked
+  - `src/frontend/src/components/CreateCustomerDialog.test.tsx` - Added:
+    - Test for link to dedicated page presence and href
+    - Test for dialog closing when link is clicked
+- **Learnings for future iterations**:
+  - Use URL params (e.g., `?showCustomer=<id>`) to pass state between pages after navigation
+  - Clean up URL params after consuming them with router.replace to keep URLs clean
+  - New pages in Next.js App Router: create directory under src/app/ with page.tsx
+  - Test file can live alongside page.tsx in the same directory
+  - Coverage: Page component 100%, CreateCustomerDialog 100%, 30 tests total
+
+---
+
 ## 2026-01-16 - US-005
 - **What was implemented**: Added Create Customer button and modal to search page
 - **Files created**:
