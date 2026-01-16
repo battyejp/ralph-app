@@ -135,7 +135,7 @@ resource mysqlServer 'Microsoft.DBforMySQL/flexibleServers@2023-06-30' = {
       geoRedundantBackup: environment == 'production' ? 'Enabled' : 'Disabled'
     }
     highAvailability: {
-      mode: environment == 'production' ? 'ZoneRedundant' : 'Disabled'
+      mode: environment == 'production' ? 'SameZone' : 'Disabled'
     }
   }
 }
