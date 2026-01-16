@@ -63,6 +63,10 @@ resource webApp 'Microsoft.Web/sites@2023-01-01' = {
           name: 'ASPNETCORE_ENVIRONMENT'
           value: environment == 'production' ? 'Production' : 'Staging'
         }
+        {
+          name: 'AllowedOrigins__0'
+          value: 'https://${frontendWebAppName}.azurewebsites.net'
+        }
       ]
       connectionStrings: [
         {
