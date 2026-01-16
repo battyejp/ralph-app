@@ -34,6 +34,7 @@ jobs:
   build-and-deploy:
     name: Build and Deploy Feature
     runs-on: ubuntu-latest
+    environment: test
     # Run on push to feature branches, manual trigger, or when 'deploy' label is added to PR
     if: |
       github.event_name == 'push' ||
