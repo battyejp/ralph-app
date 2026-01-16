@@ -7,7 +7,6 @@ on:
     paths:
       - 'src/frontend/**'
       - '.github/workflows/frontend-deploy.yml'
-      - 'infra/**'
   workflow_dispatch:
 
 permissions:
