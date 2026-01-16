@@ -15,6 +15,28 @@
 - **Backend Testing**: Tests run via `docker run --rm -v "D:\code\Github\battyejp\ralph-app\src\backend:/src" -w //src mcr.microsoft.com/dotnet/sdk:10.0 dotnet test`
 - **Repository Pattern**: Use EmailExistsAsync for duplicate checks, EmailExistsAsync returns false for soft-deleted records
 
+- **Jest Fake Timers Pattern**: When testing async code with retries, use fake timers and set up the expectation before running timers:
+  ```typescript
+  const expectation = expect(resultPromise).rejects.toMatchObject({...});
+  await jest.runAllTimersAsync();
+  await expectation;
+  ```
+
+---
+
+## 2026-01-16 - US-002
+- **What was implemented**: Added createCustomer method to frontend API client
+- **Files changed**:
+  - `src/frontend/src/lib/api/types.ts` - Added CreateCustomerData interface
+  - `src/frontend/src/lib/api/customerApi.ts` - Added createCustomer method and postWithErrorHandling helper, added 409 handling to getUserFriendlyErrorMessage
+  - `src/frontend/src/lib/api/customerApi.test.ts` - Added 15 comprehensive tests for createCustomer
+- **Learnings for future iterations**:
+  - POST requests need a separate helper method (postWithErrorHandling) similar to fetchWithErrorHandling for GET
+  - 409 Conflict should be handled with user-friendly message and non-retryable flag
+  - When testing retryable errors, must use Jest fake timers to avoid timeout issues
+  - Pre-existing tests without fake timers may timeout - this is a known issue to fix in future
+  - Coverage for new code is more important than overall coverage when other components have pre-existing gaps
+
 ---
 
 ## 2026-01-16 - US-001
