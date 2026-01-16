@@ -18,6 +18,10 @@ builder.Services.AddAutoMapper(typeof(Program).Assembly);
 // Add Repositories
 builder.Services.AddScoped<ICustomerRepository, CustomerRepository>();
 
+// Add Health Checks
+builder.Services.AddHealthChecks()
+    .AddDbContextCheck<ApplicationDbContext>("database");
+
 // Add CORS
 builder.Services.AddCors(options =>
 {
@@ -73,15 +77,13 @@ using (var scope = app.Services.CreateScope())
 }
 
 // Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment() || app.Environment.IsStaging())
+// Enable Swagger in all environments for API documentation
+app.UseSwagger();
+app.UseSwaggerUI(c =>
 {
-    app.UseSwagger();
-    app.UseSwaggerUI(c =>
-    {
-        c.SwaggerEndpoint("/swagger/v1/swagger.json", "Customer API v1");
-        c.RoutePrefix = "swagger";
-    });
-}
+    c.SwaggerEndpoint("/swagger/v1/swagger.json", "Customer API v1");
+    c.RoutePrefix = "swagger";
+});
 
 // Use CORS
 app.UseCors("AllowFrontend");
@@ -94,6 +96,7 @@ if (app.Environment.IsDevelopment())
 
 app.UseAuthorization();
 
+app.MapHealthChecks("/health");
 app.MapControllers();
 
 app.Run();

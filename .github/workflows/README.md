@@ -152,3 +152,158 @@ Configure these environments in GitHub repository settings with appropriate prot
 │  (ephemeral)    │                             │  (staged)       │
 └─────────────────┘                             └─────────────────┘
 ```
+
+## Testing the Deployed API
+
+### Environment URLs
+
+| Environment | Base URL | Swagger UI |
+|-------------|----------|------------|
+| Test | `https://ralph-app-api-test.azurewebsites.net` | [/swagger](https://ralph-app-api-test.azurewebsites.net/swagger) |
+| Production | `https://ralph-app-api-prod.azurewebsites.net` | [/swagger](https://ralph-app-api-prod.azurewebsites.net/swagger) |
+| Feature Slot | `https://ralph-app-api-test-{slot-name}.azurewebsites.net` | `/swagger` |
+
+### Health Check
+
+The `/health` endpoint verifies the API and database connectivity:
+
+```bash
+# Test environment
+curl https://ralph-app-api-test.azurewebsites.net/health
+
+# Production environment
+curl https://ralph-app-api-prod.azurewebsites.net/health
+```
+
+**Response:**
+- `200 OK` with body `Healthy` - API and database are operational
+- `503 Service Unavailable` with body `Unhealthy` - Database connection failed
+
+The health check performs an actual database connectivity test, so it will catch issues like:
+- Database server unreachable
+- Invalid connection string
+- Authentication failures
+
+### API Endpoints
+
+The Customer API provides the following endpoints:
+
+#### List Customers (with pagination, search, and sorting)
+
+```bash
+# Get all customers (paginated)
+curl "https://ralph-app-api-test.azurewebsites.net/api/customers"
+
+# Search by name or email
+curl "https://ralph-app-api-test.azurewebsites.net/api/customers?search=john"
+
+# With pagination
+curl "https://ralph-app-api-test.azurewebsites.net/api/customers?page=1&pageSize=10"
+
+# With sorting
+curl "https://ralph-app-api-test.azurewebsites.net/api/customers?sortBy=name&sortOrder=asc"
+
+# Combined
+curl "https://ralph-app-api-test.azurewebsites.net/api/customers?search=smith&page=1&pageSize=25&sortBy=email&sortOrder=desc"
+```
+
+#### Get Single Customer
+
+```bash
+curl "https://ralph-app-api-test.azurewebsites.net/api/customers/{id}"
+```
+
+#### Create Customer
+
+```bash
+curl -X POST "https://ralph-app-api-test.azurewebsites.net/api/customers" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "John Doe",
+    "email": "john.doe@example.com",
+    "phone": "+61 400 123 456",
+    "address": "123 Main St, Sydney NSW 2000"
+  }'
+```
+
+#### Update Customer
+
+```bash
+curl -X PUT "https://ralph-app-api-test.azurewebsites.net/api/customers/{id}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "John Smith",
+    "email": "john.smith@example.com",
+    "phone": "+61 400 123 456",
+    "address": "456 New St, Melbourne VIC 3000"
+  }'
+```
+
+#### Delete Customer
+
+```bash
+curl -X DELETE "https://ralph-app-api-test.azurewebsites.net/api/customers/{id}"
+```
+
+### Using Swagger UI
+
+The easiest way to explore and test the API is via the Swagger UI:
+
+1. Navigate to the Swagger URL for your environment (see table above)
+2. Expand any endpoint to see request/response schemas
+3. Click **Try it out** to test endpoints directly in the browser
+4. Fill in parameters and click **Execute**
+5. View the response body, headers, and status code
+
+### Response Format
+
+**Paginated List Response:**
+```json
+{
+  "items": [
+    {
+      "id": 1,
+      "name": "John Doe",
+      "email": "john.doe@example.com",
+      "phone": "+61 400 123 456",
+      "address": "123 Main St, Sydney NSW 2000",
+      "createdAt": "2024-01-15T10:30:00Z",
+      "updatedAt": "2024-01-15T10:30:00Z"
+    }
+  ],
+  "page": 1,
+  "pageSize": 25,
+  "totalPages": 1,
+  "totalCount": 1
+}
+```
+
+**Single Customer Response:**
+```json
+{
+  "id": 1,
+  "name": "John Doe",
+  "email": "john.doe@example.com",
+  "phone": "+61 400 123 456",
+  "address": "123 Main St, Sydney NSW 2000",
+  "createdAt": "2024-01-15T10:30:00Z",
+  "updatedAt": "2024-01-15T10:30:00Z"
+}
+```
+
+### Troubleshooting
+
+| Issue | Solution |
+|-------|----------|
+| 404 Not Found | Check the URL path is correct (endpoints are case-sensitive) |
+| 500 Internal Server Error | Check Azure App Service logs in the Azure Portal |
+| Connection refused | Verify the App Service is running and not stopped |
+| Slow response | First request after idle may be slow due to cold start |
+
+**View Application Logs:**
+```bash
+# Stream live logs (requires Azure CLI)
+az webapp log tail \
+  --name ralph-app-api-test \
+  --resource-group rg-ralph-app
+```
