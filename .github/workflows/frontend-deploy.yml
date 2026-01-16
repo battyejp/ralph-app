@@ -52,60 +52,41 @@ jobs:
           NEXT_PUBLIC_API_URL: https://ralph-app-api-test.azurewebsites.net
           NODE_ENV: production
 
-      - name: Create standalone build
+      - name: Create deployment package
         id: publish
         run: |
-          # Copy standalone build and necessary files
+          # Create deployment directory with all necessary files
           mkdir -p deploy
-          cp -r .next/standalone/. deploy/
-          cp -r .next/static deploy/.next/static
-          cp -r public deploy/public
           
-          # Create simple server.js if it doesn't exist
-          if [ ! -f deploy/server.js ]; then
-            cat > deploy/server.js << 'EOF'
+          # Copy Next.js build output
+          cp -r .next deploy/.next
+          cp -r public deploy/public
+          cp -r node_modules deploy/node_modules
+          cp package.json deploy/package.json
+          cp package-lock.json deploy/package-lock.json
+          
+          # Create startup script
+          cat > deploy/server.js << 'EOF'
           const { createServer } = require('http')
           const { parse } = require('url')
           const next = require('next')
           
-          const dev = process.env.NODE_ENV !== 'production'
-          const hostname = '0.0.0.0'
           const port = process.env.PORT || 3000
-          
-          const app = next({ dev, hostname, port })
+          const app = next({ dev: false })
           const handle = app.getRequestHandler()
           
           app.prepare().then(() => {
-            createServer(async (req, res) => {
-              try {
-                const parsedUrl = parse(req.url, true)
-                await handle(req, res, parsedUrl)
-              } catch (err) {
-                console.error('Error occurred handling', req.url, err)
-                res.statusCode = 500
-                res.end('internal server error')
-              }
-            }).listen(port, (err) => {
-              if (err) throw err
-              console.log(`> Ready on http://${hostname}:${port}`)
+            createServer((req, res) => {
+              const parsedUrl = parse(req.url, true)
+              handle(req, res, parsedUrl)
+            }).listen(port, () => {
+              console.log(`> Ready on http://localhost:${port}`)
             })
           })
           EOF
-          fi
           
-          # Create package.json for deployment
-          cat > deploy/package.json << EOF
-          {
-            "name": "ralph-app-frontend",
-            "version": "1.0.0",
-            "scripts": {
-              "start": "node server.js"
-            },
-            "dependencies": {
-              "next": "^14.2.24"
-            }
-          }
-          EOF
+          # Update package.json start script
+          node -e "const pkg = require('./deploy/package.json'); pkg.scripts.start = 'node server.js'; require('fs').writeFileSync('./deploy/package.json', JSON.stringify(pkg, null, 2));"
           
           echo "artifact-name=frontend-${{ github.sha }}" >> $GITHUB_OUTPUT
         working-directory: src/frontend
