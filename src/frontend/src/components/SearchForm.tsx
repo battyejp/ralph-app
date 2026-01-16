@@ -10,12 +10,22 @@ import type { CustomerSearchParams } from '@/lib/api/types';
 interface SearchFormProps {
   onSearch: (params: CustomerSearchParams) => void;
   isLoading?: boolean;
+  onValidationError?: (error: string) => void;
 }
 
-export function SearchForm({ onSearch, isLoading = false }: SearchFormProps) {
+/**
+ * Simple email validation
+ */
+function isValidEmail(email: string): boolean {
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return emailRegex.test(email);
+}
+
+export function SearchForm({ onSearch, isLoading = false, onValidationError }: SearchFormProps) {
   const [search, setSearch] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
+  const [emailError, setEmailError] = useState('');
 
   // Debounce search inputs with 500ms delay
   const debouncedSearch = useDebounce(search, 500);
@@ -23,6 +33,19 @@ export function SearchForm({ onSearch, isLoading = false }: SearchFormProps) {
   const debouncedPhone = useDebounce(phone, 500);
 
   const handleSearch = () => {
+    // Clear previous errors
+    setEmailError('');
+
+    // Validate email if provided
+    if (debouncedEmail.trim() && !isValidEmail(debouncedEmail.trim())) {
+      const error = 'Please enter a valid email address';
+      setEmailError(error);
+      if (onValidationError) {
+        onValidationError(error);
+      }
+      return;
+    }
+
     const params: CustomerSearchParams = {};
 
     if (debouncedSearch.trim()) {
@@ -48,6 +71,7 @@ export function SearchForm({ onSearch, isLoading = false }: SearchFormProps) {
     setSearch('');
     setEmail('');
     setPhone('');
+    setEmailError('');
     onSearch({});
   };
 
@@ -85,8 +109,15 @@ export function SearchForm({ onSearch, isLoading = false }: SearchFormProps) {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             disabled={isLoading}
-            className="w-full"
+            className={`w-full ${emailError ? 'border-red-500' : ''}`}
+            aria-invalid={!!emailError}
+            aria-describedby={emailError ? 'email-error' : undefined}
           />
+          {emailError && (
+            <p id="email-error" className="text-sm text-red-500" role="alert">
+              {emailError}
+            </p>
+          )}
         </div>
 
         {/* Phone Search Field */}

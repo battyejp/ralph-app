@@ -9,10 +9,12 @@ import { CustomerDetailsDialog } from '@/components/CustomerDetailsDialog';
 import { customerApi } from '@/lib/api/customerApi';
 import { ApiError } from '@/lib/api/customerApi';
 import type { Customer, CustomerSearchParams } from '@/lib/api/types';
+import { useToast } from '@/hooks/useToast';
 
 function HomeContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { toast } = useToast();
 
   const [isLoading, setIsLoading] = useState(false);
   const [customers, setCustomers] = useState<Customer[]>([]);
@@ -91,11 +93,21 @@ function HomeContent() {
       setTotalCount(response.totalCount);
       updateURL(searchParams);
     } catch (err) {
+      let errorMessage = 'An unexpected error occurred. Please try again.';
       if (err instanceof ApiError) {
+        errorMessage = err.message;
         setError(err.message);
       } else {
-        setError('An unexpected error occurred. Please try again.');
+        setError(errorMessage);
       }
+
+      // Show error toast
+      toast({
+        variant: 'destructive',
+        title: 'Search Failed',
+        description: errorMessage,
+      });
+
       setCustomers([]);
       setTotalPages(0);
       setTotalCount(0);
@@ -117,11 +129,20 @@ function HomeContent() {
       setTotalCount(response.totalCount);
       updateURL(params);
     } catch (err) {
+      let errorMessage = 'An unexpected error occurred. Please try again.';
       if (err instanceof ApiError) {
+        errorMessage = err.message;
         setError(err.message);
       } else {
-        setError('An unexpected error occurred. Please try again.');
+        setError(errorMessage);
       }
+
+      toast({
+        variant: 'destructive',
+        title: 'Failed to Load Page',
+        description: errorMessage,
+      });
+
       setCustomers([]);
     } finally {
       setIsLoading(false);
@@ -143,11 +164,20 @@ function HomeContent() {
       setTotalCount(response.totalCount);
       updateURL(params);
     } catch (err) {
+      let errorMessage = 'An unexpected error occurred. Please try again.';
       if (err instanceof ApiError) {
+        errorMessage = err.message;
         setError(err.message);
       } else {
-        setError('An unexpected error occurred. Please try again.');
+        setError(errorMessage);
       }
+
+      toast({
+        variant: 'destructive',
+        title: 'Failed to Update Page Size',
+        description: errorMessage,
+      });
+
       setCustomers([]);
     } finally {
       setIsLoading(false);
@@ -176,11 +206,20 @@ function HomeContent() {
       setTotalCount(response.totalCount);
       updateURL(params);
     } catch (err) {
+      let errorMessage = 'An unexpected error occurred. Please try again.';
       if (err instanceof ApiError) {
+        errorMessage = err.message;
         setError(err.message);
       } else {
-        setError('An unexpected error occurred. Please try again.');
+        setError(errorMessage);
       }
+
+      toast({
+        variant: 'destructive',
+        title: 'Failed to Sort',
+        description: errorMessage,
+      });
+
       setCustomers([]);
     } finally {
       setIsLoading(false);
@@ -190,6 +229,14 @@ function HomeContent() {
   const handleCustomerClick = (customer: Customer) => {
     setSelectedCustomerId(customer.id);
     setIsDialogOpen(true);
+  };
+
+  const handleValidationError = (error: string) => {
+    toast({
+      variant: 'destructive',
+      title: 'Validation Error',
+      description: error,
+    });
   };
 
   return (
@@ -202,7 +249,11 @@ function HomeContent() {
           </p>
         </div>
 
-        <SearchForm onSearch={handleSearch} isLoading={isLoading} />
+        <SearchForm
+          onSearch={handleSearch}
+          isLoading={isLoading}
+          onValidationError={handleValidationError}
+        />
 
         {hasSearched && (
           <>

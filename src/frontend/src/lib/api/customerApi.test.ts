@@ -277,4 +277,319 @@ describe('CustomerApiClient', () => {
       await expect(apiClient.searchCustomers()).rejects.toThrow(customError);
     });
   });
+
+  describe('retry mechanism', () => {
+    beforeEach(() => {
+      jest.useFakeTimers();
+    });
+
+    afterEach(() => {
+      jest.useRealTimers();
+    });
+
+    it('should retry on 500 server error', async () => {
+      const mockResponse = {
+        items: [],
+        totalCount: 0,
+        page: 1,
+        pageSize: 10,
+        totalPages: 0,
+      };
+
+      // Fail twice, then succeed
+      global.fetch = jest
+        .fn()
+        .mockResolvedValueOnce({
+          ok: false,
+          status: 500,
+          json: async () => ({ message: 'Server error' }),
+        })
+        .mockResolvedValueOnce({
+          ok: false,
+          status: 500,
+          json: async () => ({ message: 'Server error' }),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => mockResponse,
+        });
+
+      const resultPromise = apiClient.searchCustomers();
+
+      // Fast-forward through retries
+      await jest.runAllTimersAsync();
+
+      const result = await resultPromise;
+
+      expect(global.fetch).toHaveBeenCalledTimes(3);
+      expect(result).toEqual(mockResponse);
+    });
+
+    it('should retry on network error', async () => {
+      const mockResponse = {
+        items: [],
+        totalCount: 0,
+        page: 1,
+        pageSize: 10,
+        totalPages: 0,
+      };
+
+      // Fail with network error, then succeed
+      global.fetch = jest
+        .fn()
+        .mockRejectedValueOnce(new TypeError('Network error'))
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => mockResponse,
+        });
+
+      const resultPromise = apiClient.searchCustomers();
+
+      await jest.runAllTimersAsync();
+
+      const result = await resultPromise;
+
+      expect(global.fetch).toHaveBeenCalledTimes(2);
+      expect(result).toEqual(mockResponse);
+    });
+
+    it('should fail after max retries on 500 error', async () => {
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: false,
+        status: 500,
+        json: async () => ({ message: 'Server error' }),
+      });
+
+      const resultPromise = apiClient.searchCustomers();
+
+      await jest.runAllTimersAsync();
+
+      await expect(resultPromise).rejects.toThrow(ApiError);
+      await expect(resultPromise).rejects.toThrow('Server error');
+
+      // Should try 4 times total (initial + 3 retries)
+      expect(global.fetch).toHaveBeenCalledTimes(4);
+    });
+
+    it('should not retry on 400 bad request error', async () => {
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: false,
+        status: 400,
+        json: async () => ({ message: 'Bad request' }),
+      });
+
+      await expect(apiClient.searchCustomers()).rejects.toThrow(ApiError);
+
+      // Should only call once (no retries)
+      expect(global.fetch).toHaveBeenCalledTimes(1);
+    });
+
+    it('should not retry on 404 not found error', async () => {
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: false,
+        status: 404,
+        json: async () => ({ message: 'Not found' }),
+      });
+
+      await expect(apiClient.searchCustomers()).rejects.toThrow(ApiError);
+
+      // Should only call once (no retries)
+      expect(global.fetch).toHaveBeenCalledTimes(1);
+    });
+
+    it('should retry on 429 rate limit error', async () => {
+      const mockResponse = {
+        items: [],
+        totalCount: 0,
+        page: 1,
+        pageSize: 10,
+        totalPages: 0,
+      };
+
+      global.fetch = jest
+        .fn()
+        .mockResolvedValueOnce({
+          ok: false,
+          status: 429,
+          json: async () => ({ message: 'Too many requests' }),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => mockResponse,
+        });
+
+      const resultPromise = apiClient.searchCustomers();
+
+      await jest.runAllTimersAsync();
+
+      const result = await resultPromise;
+
+      expect(global.fetch).toHaveBeenCalledTimes(2);
+      expect(result).toEqual(mockResponse);
+    });
+
+    it('should use exponential backoff for retries', async () => {
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: false,
+        status: 500,
+        json: async () => ({ message: 'Server error' }),
+      });
+
+      const resultPromise = apiClient.searchCustomers();
+
+      // Don't advance timers yet
+      await Promise.resolve();
+
+      // First retry should wait 1000ms (1s * 2^0)
+      jest.advanceTimersByTime(999);
+      expect(global.fetch).toHaveBeenCalledTimes(1);
+
+      jest.advanceTimersByTime(1);
+      await Promise.resolve();
+      expect(global.fetch).toHaveBeenCalledTimes(2);
+
+      // Second retry should wait 2000ms (1s * 2^1)
+      jest.advanceTimersByTime(1999);
+      expect(global.fetch).toHaveBeenCalledTimes(2);
+
+      jest.advanceTimersByTime(1);
+      await Promise.resolve();
+      expect(global.fetch).toHaveBeenCalledTimes(3);
+
+      // Complete remaining retries
+      await jest.runAllTimersAsync();
+
+      await expect(resultPromise).rejects.toThrow(ApiError);
+    });
+  });
+
+  describe('user-friendly error messages', () => {
+    it('should return user-friendly message for 400 error', async () => {
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: false,
+        status: 400,
+        json: async () => ({}),
+      });
+
+      await expect(apiClient.searchCustomers()).rejects.toThrow(
+        'The request was invalid. Please check your input and try again.'
+      );
+    });
+
+    it('should return user-friendly message for 401 error', async () => {
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: false,
+        status: 401,
+        json: async () => ({}),
+      });
+
+      await expect(apiClient.searchCustomers()).rejects.toThrow(
+        'You are not authorized to perform this action. Please log in.'
+      );
+    });
+
+    it('should return user-friendly message for 403 error', async () => {
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: false,
+        status: 403,
+        json: async () => ({}),
+      });
+
+      await expect(apiClient.searchCustomers()).rejects.toThrow(
+        'You do not have permission to access this resource.'
+      );
+    });
+
+    it('should return user-friendly message for 404 error', async () => {
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: false,
+        status: 404,
+        json: async () => ({}),
+      });
+
+      await expect(apiClient.searchCustomers()).rejects.toThrow(
+        'The requested resource could not be found.'
+      );
+    });
+
+    it('should return user-friendly message for 500 error', async () => {
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: false,
+        status: 500,
+        json: async () => ({}),
+      });
+
+      await expect(apiClient.searchCustomers()).rejects.toThrow(
+        'A server error occurred. Please try again later.'
+      );
+    });
+
+    it('should return user-friendly message for 503 error', async () => {
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: false,
+        status: 503,
+        json: async () => ({}),
+      });
+
+      await expect(apiClient.searchCustomers()).rejects.toThrow(
+        'The service is currently undergoing maintenance. Please try again later.'
+      );
+    });
+
+    it('should prefer server error message over default', async () => {
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: false,
+        status: 400,
+        json: async () => ({ message: 'Custom error from server' }),
+      });
+
+      await expect(apiClient.searchCustomers()).rejects.toThrow('Custom error from server');
+    });
+  });
+
+  describe('ApiError with isRetryable flag', () => {
+    it('should mark 500 errors as retryable', async () => {
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: false,
+        status: 500,
+        json: async () => ({}),
+      });
+
+      try {
+        await apiClient.searchCustomers();
+        fail('Should have thrown');
+      } catch (error) {
+        expect(error).toBeInstanceOf(ApiError);
+        expect((error as ApiError).isRetryable).toBe(true);
+      }
+    });
+
+    it('should mark 400 errors as not retryable', async () => {
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: false,
+        status: 400,
+        json: async () => ({}),
+      });
+
+      try {
+        await apiClient.searchCustomers();
+        fail('Should have thrown');
+      } catch (error) {
+        expect(error).toBeInstanceOf(ApiError);
+        expect((error as ApiError).isRetryable).toBe(false);
+      }
+    });
+
+    it('should mark network errors as retryable', async () => {
+      global.fetch = jest.fn().mockRejectedValue(new TypeError('Network error'));
+
+      try {
+        await apiClient.searchCustomers();
+        fail('Should have thrown');
+      } catch (error) {
+        expect(error).toBeInstanceOf(ApiError);
+        expect((error as ApiError).isRetryable).toBe(true);
+      }
+    });
+  });
 });
