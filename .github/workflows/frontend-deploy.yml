@@ -60,10 +60,14 @@ jobs:
           
           # Copy Next.js build output
           cp -r .next deploy/.next
-          cp -r public deploy/public
           cp -r node_modules deploy/node_modules
           cp package.json deploy/package.json
           cp package-lock.json deploy/package-lock.json
+          
+          # Copy public directory if it exists
+          if [ -d "public" ]; then
+            cp -r public deploy/public
+          fi
           
           # Create startup script
           cat > deploy/server.js << 'EOF'
