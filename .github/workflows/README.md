@@ -4,11 +4,26 @@ This directory contains the CI/CD pipelines for the Ralph App backend API.
 
 ## Workflows Overview
 
+### Backend Workflows
+
 | Workflow | Trigger | Purpose |
-|----------|---------|---------|
+|----------|---------|---------|-------|
 | [backend-ci.yml](#backend-ci) | PRs and pushes to `main` | Code validation and testing |
 | [backend-deploy.yml](#backend-deploy) | Pushes to `main`, manual | Deploy to Test and Production |
 | [backend-deploy-feature.yml](#backend-deploy-feature) | Feature branches, PRs | Ephemeral preview environments |
+
+### Frontend Workflows
+
+| Workflow | Trigger | Purpose |
+|----------|---------|---------|-------|
+| [frontend-ci.yml](#frontend-ci) | PRs and pushes to `main` | Code validation and testing |
+| [frontend-deploy.yml](#frontend-deploy) | Pushes to `main`, manual | Deploy to Test and Production |
+| [frontend-deploy-feature.yml](#frontend-deploy-feature) | Feature branches, PRs | Ephemeral preview environments |
+
+### Infrastructure
+
+| Workflow | Trigger | Purpose |
+|----------|---------|---------|-------|
 | [infra-deploy.yml](#infrastructure-deploy) | Manual only | Provision Azure infrastructure |
 
 ## Workflow Details
@@ -115,6 +130,92 @@ This workflow is intentionally manual since infrastructure changes should be del
 
 ---
 
+### Frontend CI
+
+**File:** `frontend-ci.yml`
+
+**Triggers:**
+- Pull requests to `main` or `develop` (when frontend code changes)
+- Pushes to `main`, `develop`, or feature branches (when frontend code changes)
+
+**What it does:**
+1. Checks out the code
+2. Sets up Node.js 20
+3. Installs dependencies with npm ci
+4. Runs ESLint for code quality
+5. Runs Jest tests with code coverage
+6. Uploads coverage to Codecov
+7. Builds Next.js application
+8. Verifies build output exists
+9. Runs security scan with npm audit
+
+**Security Checks:**
+- Reports moderate/high/critical vulnerabilities
+- Continues on error to not block builds on audit issues
+
+This workflow ensures frontend code quality and catches issues early.
+
+---
+
+### Frontend Deploy
+
+**File:** `frontend-deploy.yml`
+
+**Triggers:**
+- Pushes to `main` (when frontend or infra code changes) → Production
+- Manual trigger via `workflow_dispatch` with environment selection
+
+**What it does:**
+1. **Determine Environment:** Sets target based on trigger/input
+2. **Build and Deploy Job:**
+   - Installs dependencies
+   - Runs tests
+   - Builds Next.js in production mode with environment-specific API URL
+   - Creates standalone deployment package
+   - Deploys to Azure App Service
+   - Runs health check verification
+   - Creates deployment summary
+
+**Deployment Package:**
+- Uses Next.js standalone output for minimal bundle size
+- Includes custom server.js for Azure App Service
+- Packages static assets and public files
+
+**Environments:**
+- Test: `ralph-app-web-test.azurewebsites.net`
+- Production: `ralph-app-web-prod.azurewebsites.net`
+
+---
+
+### Frontend Deploy Feature
+
+**File:** `frontend-deploy-feature.yml`
+
+**Triggers:**
+- Pushes to `feature/**`, `feat/**`, `bugfix/**`, `hotfix/**`, `ralph/**` branches
+- Manual trigger via `workflow_dispatch`
+- When a PR is labeled with `deploy`
+
+**What it does:**
+1. Generates a sanitized environment name from the branch name (max 20 chars)
+2. Builds and tests the frontend
+3. Creates a deployment slot on the test App Service
+4. Deploys the feature branch to the slot
+5. Runs health check verification
+6. Comments on the PR with the deployment URL
+7. **Automatically cleans up** the slot when the PR is closed
+
+**Example:**
+- Branch: `feature/customer-dashboard`
+- Slot URL: `ralph-app-web-test-customer-dashboard.azurewebsites.net`
+
+**Auto-Cleanup:**
+The `cleanup` job runs when a PR is closed, automatically deleting the deployment slot to save resources.
+
+This enables reviewers to test frontend features in isolation before merging.
+
+---
+
 ## Required Secrets
 
 Configure these secrets in your GitHub repository settings:
@@ -142,26 +243,38 @@ Configure these environments in GitHub repository settings with appropriate prot
          │                       │                       │
          ▼                       ▼                       ▼
 ┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
-│ backend-deploy- │     │   backend-ci    │     │ backend-deploy  │
-│    feature      │     │  (validation)   │     │ (test → prod)   │
+│ backend/frontend│     │ backend/frontend│     │ backend/frontend│
+│ -deploy-feature │     │   -ci           │     │  -deploy        │
+│                 │     │  (validation)   │     │ (test → prod)   │
 └────────┬────────┘     └─────────────────┘     └────────┬────────┘
          │                                               │
          ▼                                               ▼
 ┌─────────────────┐                             ┌─────────────────┐
 │  Preview Slot   │                             │  Test → Prod    │
 │  (ephemeral)    │                             │  (staged)       │
+│  API + Web      │                             │  API + Web      │
 └─────────────────┘                             └─────────────────┘
 ```
 
-## Testing the Deployed API
+## Testing the Deployed Applications
 
 ### Environment URLs
+
+#### Backend API
 
 | Environment | Base URL | Swagger UI |
 |-------------|----------|------------|
 | Test | `https://ralph-app-api-test.azurewebsites.net` | [/swagger](https://ralph-app-api-test.azurewebsites.net/swagger) |
 | Production | `https://ralph-app-api-prod.azurewebsites.net` | [/swagger](https://ralph-app-api-prod.azurewebsites.net/swagger) |
 | Feature Slot | `https://ralph-app-api-test-{slot-name}.azurewebsites.net` | `/swagger` |
+
+#### Frontend Web
+
+| Environment | Base URL |
+|-------------|----------|
+| Test | `https://ralph-app-web-test.azurewebsites.net` |
+| Production | `https://ralph-app-web-prod.azurewebsites.net` |
+| Feature Slot | `https://ralph-app-web-test-{slot-name}.azurewebsites.net` |
 
 ### Health Check
 

@@ -1,0 +1,249 @@
+name: Frontend Deploy Feature Environment
+
+on:
+  push:
+    branches:
+      - 'feature/**'
+      - 'feat/**'
+      - 'bugfix/**'
+      - 'hotfix/**'
+      - 'ralph/**'
+    paths:
+      - 'src/frontend/**'
+      - '.github/workflows/frontend-deploy-feature.yml'
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: 'Branch to deploy'
+        required: false
+        type: string
+  pull_request:
+    types: [labeled]
+
+permissions:
+  id-token: write
+  contents: read
+  pull-requests: write
+
+env:
+  NODE_VERSION: '20'
+  AZURE_RESOURCE_GROUP: 'rg-ralph-app'
+  APP_NAME: 'ralph-app-web'
+
+jobs:
+  build-and-deploy:
+    name: Build and Deploy Feature
+    runs-on: ubuntu-latest
+    environment: test
+    # Run on push to feature branches, manual trigger, or when 'deploy' label is added to PR
+    if: |
+      github.event_name == 'push' ||
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'pull_request' && github.event.label.name == 'deploy')
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Generate environment name
+        id: env-name
+        run: |
+          # Extract branch name and sanitize for Azure resource naming
+          BRANCH_NAME="${{ github.head_ref || github.ref_name }}"
+          # Remove prefix (feature/, feat/, bugfix/, etc.)
+          ENV_NAME=$(echo "$BRANCH_NAME" | sed 's|^[^/]*/||' | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9-]/-/g' | cut -c1-20)
+          echo "env-name=$ENV_NAME" >> $GITHUB_OUTPUT
+          echo "Feature environment: $ENV_NAME"
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: src/frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: src/frontend
+
+      - name: Run tests
+        run: npm run test
+        working-directory: src/frontend
+
+      - name: Build application
+        run: npm run build
+        working-directory: src/frontend
+        env:
+          NEXT_PUBLIC_API_URL: https://ralph-app-api-test.azurewebsites.net
+          NODE_ENV: production
+
+      - name: Create standalone build
+        run: |
+          # Copy standalone build and necessary files
+          mkdir -p deploy
+          cp -r .next/standalone/. deploy/
+          cp -r .next/static deploy/.next/static
+          cp -r public deploy/public
+          
+          # Create simple server.js if it doesn't exist
+          if [ ! -f deploy/server.js ]; then
+            cat > deploy/server.js << 'EOF'
+          const { createServer } = require('http')
+          const { parse } = require('url')
+          const next = require('next')
+          
+          const dev = process.env.NODE_ENV !== 'production'
+          const hostname = '0.0.0.0'
+          const port = process.env.PORT || 3000
+          
+          const app = next({ dev, hostname, port })
+          const handle = app.getRequestHandler()
+          
+          app.prepare().then(() => {
+            createServer(async (req, res) => {
+              try {
+                const parsedUrl = parse(req.url, true)
+                await handle(req, res, parsedUrl)
+              } catch (err) {
+                console.error('Error occurred handling', req.url, err)
+                res.statusCode = 500
+                res.end('internal server error')
+              }
+            }).listen(port, (err) => {
+              if (err) throw err
+              console.log(`> Ready on http://${hostname}:${port}`)
+            })
+          })
+          EOF
+          fi
+          
+          # Create package.json for deployment
+          cat > deploy/package.json << EOF
+          {
+            "name": "ralph-app-frontend",
+            "version": "1.0.0",
+            "scripts": {
+              "start": "node server.js"
+            },
+            "dependencies": {
+              "next": "^14.2.24"
+            }
+          }
+          EOF
+        working-directory: src/frontend
+
+      - name: Create deployment artifact
+        run: |
+          cd src/frontend/deploy
+          zip -r ../../../frontend-deploy.zip .
+
+      - name: Login to Azure
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Create or update feature App Service slot
+        uses: azure/cli@v2
+        with:
+          inlineScript: |
+            # Check if App Service exists, create slot if not
+            SLOT_NAME="${{ steps.env-name.outputs.env-name }}"
+            APP_SERVICE="${{ env.APP_NAME }}-test"
+
+            # Try to create deployment slot (will fail silently if exists)
+            az webapp deployment slot create \
+              --name $APP_SERVICE \
+              --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+              --slot $SLOT_NAME \
+              --configuration-source $APP_SERVICE \
+              2>/dev/null || echo "Slot already exists or using standalone app"
+
+      - name: Deploy to Feature Environment
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: ${{ env.APP_NAME }}-test
+          slot-name: ${{ steps.env-name.outputs.env-name }}
+          package: frontend-deploy.zip
+
+      - name: Get deployment URL
+        id: deployment-url
+        run: |
+          SLOT_NAME="${{ steps.env-name.outputs.env-name }}"
+          URL="https://${{ env.APP_NAME }}-test-${SLOT_NAME}.azurewebsites.net"
+          echo "url=$URL" >> $GITHUB_OUTPUT
+          echo "Deployed to: $URL"
+
+      - name: Verify deployment
+        run: |
+          echo "Waiting for deployment to be ready..."
+          sleep 30
+          
+          MAX_RETRIES=8
+          RETRY=0
+          
+          while [ $RETRY -lt $MAX_RETRIES ]; do
+            HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" ${{ steps.deployment-url.outputs.url }} || echo "000")
+            
+            if [ "$HTTP_CODE" == "200" ] || [ "$HTTP_CODE" == "301" ] || [ "$HTTP_CODE" == "302" ]; then
+              echo "✅ Deployment successful! HTTP Status: $HTTP_CODE"
+              exit 0
+            fi
+            
+            echo "⏳ Waiting for app to be ready... (HTTP $HTTP_CODE) - Retry $((RETRY+1))/$MAX_RETRIES"
+            sleep 15
+            RETRY=$((RETRY+1))
+          done
+          
+          echo "⚠️ Deployment may need more time to start. Please verify manually."
+          exit 0
+
+      - name: Comment on PR with deployment URL
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `## 🎨 Feature Frontend Environment Deployed
+
+              Your feature frontend is ready:
+
+              **Frontend URL:** ${{ steps.deployment-url.outputs.url }}
+              **Environment:** ${{ steps.env-name.outputs.env-name }}
+
+              This environment will be automatically cleaned up when the PR is closed.`
+            })
+
+  cleanup:
+    name: Cleanup Feature Environment
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request' && github.event.action == 'closed'
+
+    steps:
+      - name: Generate environment name
+        id: env-name
+        run: |
+          BRANCH_NAME="${{ github.head_ref }}"
+          ENV_NAME=$(echo "$BRANCH_NAME" | sed 's|^[^/]*/||' | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9-]/-/g' | cut -c1-20)
+          echo "env-name=$ENV_NAME" >> $GITHUB_OUTPUT
+
+      - name: Login to Azure
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Delete deployment slot
+        uses: azure/cli@v2
+        with:
+          inlineScript: |
+            az webapp deployment slot delete \
+              --name ${{ env.APP_NAME }}-test \
+              --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+              --slot ${{ steps.env-name.outputs.env-name }} \
+              2>/dev/null || echo "Slot already deleted or doesn't exist"

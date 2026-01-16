@@ -1,16 +1,31 @@
 # Deployment Guide
 
-This guide covers setting up CI/CD pipelines for the Ralph App backend deployment to Azure.
+This guide covers setting up CI/CD pipelines for the Ralph App (backend and frontend) deployment to Azure.
 
 ## Overview
 
 The deployment setup includes:
 
+### Backend Workflows
+
 | Workflow | Trigger | Description |
 |----------|---------|-------------|
-| `backend-ci.yml` | PR + push to main | Build and test on every change |
-| `backend-deploy.yml` | Push to main | Deploy to Test, then Production |
-| `backend-deploy-feature.yml` | Push to feature branches | Deploy to feature environments |
+| `backend-ci.yml` | PR + push to main | Build and test backend on every change |
+| `backend-deploy.yml` | Push to main | Deploy backend to Test, then Production |
+| `backend-deploy-feature.yml` | Push to feature branches | Deploy backend to feature environments |
+
+### Frontend Workflows
+
+| Workflow | Trigger | Description |
+|----------|---------|-------------|
+| `frontend-ci.yml` | PR + push to main | Build and test frontend on every change |
+| `frontend-deploy.yml` | Push to main | Deploy frontend to Test or Production |
+| `frontend-deploy-feature.yml` | Push to feature branches | Deploy frontend to feature environments |
+
+### Infrastructure
+
+| Workflow | Trigger | Description |
+|----------|---------|-------------|
 | `infra-deploy.yml` | Manual | Deploy Azure infrastructure |
 
 ## Architecture
@@ -31,6 +46,7 @@ The deployment setup includes:
 │                          Azure                                   │
 ├─────────────────────────────────────────────────────────────────┤
 │                                                                  │
+│  Backend (API):                                                  │
 │  ┌──────────────────┐     ┌──────────────────┐                  │
 │  │  App Service     │     │  App Service     │                  │
 │  │  (Test)          │     │  (Production)    │                  │
@@ -41,6 +57,13 @@ The deployment setup includes:
 │  ┌──────────────────┐     ┌──────────────────┐                  │
 │  │  MySQL Flexible  │     │  MySQL Flexible  │                  │
 │  │  Server (Test)   │     │  Server (Prod)   │                  │
+│  └──────────────────┘     └──────────────────┘                  │
+│                                                                  │
+│  Frontend (Next.js):                                             │
+│  ┌──────────────────┐     ┌──────────────────┐                  │
+│  │  App Service     │     │  App Service     │                  │
+│  │  (Test)          │     │  (Production)    │                  │
+│  │  + Feature Slots │     │                  │                  │
 │  └──────────────────┘     └──────────────────┘                  │
 │                                                                  │
 └─────────────────────────────────────────────────────────────────┘
@@ -166,7 +189,26 @@ az deployment group create \
   --parameters environment=production mysqlAdminPassword='<your-password>'
 ```
 
-## Step 4: Verify Deployment
+**Note:** The infrastructure template now includes both backend and frontend App Services. The frontend requires Node.js 20 LTS runtime.
+
+## Step 4: Configure Next.js for Deployment
+
+Update `src/frontend/next.config.ts` to enable standalone output:
+
+```typescript
+import type { NextConfig } from "next";
+
+const nextConfig: NextConfig = {
+  output: 'standalone',
+  // ...other config
+};
+
+export default nextConfig;
+```
+
+This creates a minimal deployment package with only the necessary files.
+
+## Step 5: Verify Deployment
 
 After infrastructure is deployed, push a change to the backend:
 
@@ -183,7 +225,9 @@ This will trigger the feature environment deployment.
 
 ## Workflow Details
 
-### backend-ci.yml
+### Backend Workflows
+
+#### backend-ci.yml
 
 **Triggers:**
 - Pull requests targeting `main` (when `src/backend/**` changes)
@@ -231,11 +275,21 @@ This will trigger the feature environment deployment.
 
 After deployment, your environments will be available at:
 
+### Backend (API)
+
 | Environment | URL |
 |-------------|-----|
 | Test | `https://ralph-app-api-test.azurewebsites.net` |
 | Production | `https://ralph-app-api-prod.azurewebsites.net` |
 | Feature | `https://ralph-app-api-test-<branch-name>.azurewebsites.net` |
+
+### Frontend (Web)
+
+| Environment | URL |
+|-------------|-----|
+| Test | `https://ralph-app-web-test.azurewebsites.net` |
+| Production | `https://ralph-app-web-prod.azurewebsites.net` |
+| Feature | `https://ralph-app-web-test-<branch-name>.azurewebsites.net` |
 
 ## Troubleshooting
 

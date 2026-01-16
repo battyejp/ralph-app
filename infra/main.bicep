@@ -1,11 +1,14 @@
-// Main Bicep template for Ralph App Backend Infrastructure
-// Deploys: App Service Plan, Web Apps (Test + Production), MySQL Flexible Server
+// Main Bicep template for Ralph App Infrastructure
+// Deploys: App Service Plans, Web Apps (Backend + Frontend for Test + Production), MySQL Flexible Server
 
 @description('The Azure region for all resources')
 param location string = resourceGroup().location
 
-@description('Base name for all resources')
+@description('Base name for backend resources')
 param appName string = 'ralph-app-api'
+
+@description('Base name for frontend resources')
+param frontendAppName string = 'ralph-app-web'
 
 @description('Environment name (test, production)')
 @allowed(['test', 'production'])
@@ -27,6 +30,8 @@ param mysqlSkuName string = environment == 'production' ? 'Standard_D2ds_v4' : '
 // Variables
 var appServicePlanName = '${appName}-plan-${environment}'
 var webAppName = '${appName}-${environment == 'production' ? 'prod' : 'test'}'
+var frontendAppServicePlanName = '${frontendAppName}-plan-${environment}'
+var frontendWebAppName = '${frontendAppName}-${environment == 'production' ? 'prod' : 'test'}'
 var mysqlServerName = '${appName}-mysql-${environment}'
 var mysqlDatabaseName = 'customerdb'
 
@@ -64,6 +69,44 @@ resource webApp 'Microsoft.Web/sites@2023-01-01' = {
           name: 'DefaultConnection'
           connectionString: 'Server=${mysqlServer.properties.fullyQualifiedDomainName};Port=3306;Database=${mysqlDatabaseName};User=${mysqlAdminLogin};Password=${mysqlAdminPassword};'
           type: 'MySql'
+        }
+      ]
+    }
+    httpsOnly: true
+  }
+}
+
+// Frontend App Service Plan
+resource frontendAppServicePlan 'Microsoft.Web/serverfarms@2023-01-01' = {
+  name: frontendAppServicePlanName
+  location: location
+  sku: {
+    name: appServicePlanSku
+  }
+  kind: 'linux'
+  properties: {
+    reserved: true
+  }
+}
+
+// Frontend Web App
+resource frontendWebApp 'Microsoft.Web/sites@2023-01-01' = {
+  name: frontendWebAppName
+  location: location
+  properties: {
+    serverFarmId: frontendAppServicePlan.id
+    siteConfig: {
+      linuxFxVersion: 'NODE|20-lts'
+      alwaysOn: environment == 'production'
+      appCommandLine: 'node server.js'
+      appSettings: [
+        {
+          name: 'NEXT_PUBLIC_API_URL'
+          value: 'https://${webApp.properties.defaultHostName}'
+        }
+        {
+          name: 'NODE_ENV'
+          value: environment == 'production' ? 'production' : 'development'
         }
       ]
     }
@@ -120,5 +163,7 @@ resource mysqlFirewallRule 'Microsoft.DBforMySQL/flexibleServers/firewallRules@2
 // Outputs
 output webAppName string = webApp.name
 output webAppUrl string = 'https://${webApp.properties.defaultHostName}'
+output frontendWebAppName string = frontendWebApp.name
+output frontendWebAppUrl string = 'https://${frontendWebApp.properties.defaultHostName}'
 output mysqlServerName string = mysqlServer.name
 output mysqlServerFqdn string = mysqlServer.properties.fullyQualifiedDomainName
