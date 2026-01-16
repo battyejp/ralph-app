@@ -97,14 +97,10 @@ resource mysqlServer 'Microsoft.DBforMySQL/flexibleServers@2023-06-30' = {
   }
 }
 
-// MySQL Database
-resource mysqlDatabase 'Microsoft.DBforMySQL/flexibleServers/databases@2023-06-30' = {
+// MySQL Database - Reference existing if already created
+resource mysqlDatabase 'Microsoft.DBforMySQL/flexibleServers/databases@2023-06-30' existing = {
   parent: mysqlServer
   name: mysqlDatabaseName
-  properties: {
-    charset: 'utf8mb4'
-    collation: 'utf8mb4_unicode_ci'
-  }
 }
 
 // MySQL Firewall Rule - Allow Azure Services
