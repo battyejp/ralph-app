@@ -17,7 +17,7 @@ permissions:
 
 env:
   AZURE_RESOURCE_GROUP: 'rg-ralph-app'
-  LOCATION: 'australiaeast'
+  LOCATION: 'ukwest'
 
 jobs:
   deploy-infrastructure:
