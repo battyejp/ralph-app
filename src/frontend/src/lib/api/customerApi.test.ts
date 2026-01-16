@@ -1,5 +1,5 @@
 import { CustomerApiClient, ApiError } from './customerApi';
-import type { Customer, PaginatedResponse } from './types';
+import type { Customer, PaginatedResponse, CreateCustomerData } from './types';
 
 describe('CustomerApiClient', () => {
   let apiClient: CustomerApiClient;
@@ -590,6 +590,352 @@ describe('CustomerApiClient', () => {
         expect(error).toBeInstanceOf(ApiError);
         expect((error as ApiError).isRetryable).toBe(true);
       }
+    });
+  });
+
+  describe('createCustomer', () => {
+    const mockCustomerData: CreateCustomerData = {
+      name: 'John Doe',
+      email: 'john@example.com',
+      phone: '555-1234',
+      address: '123 Main St',
+    };
+
+    const mockCreatedCustomer: Customer = {
+      id: '123e4567-e89b-12d3-a456-426614174000',
+      name: 'John Doe',
+      email: 'john@example.com',
+      phone: '555-1234',
+      address: '123 Main St',
+      createdAt: '2024-01-01T00:00:00Z',
+      updatedAt: '2024-01-01T00:00:00Z',
+    };
+
+    it('should create a customer successfully', async () => {
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: true,
+        json: async () => mockCreatedCustomer,
+      });
+
+      const result = await apiClient.createCustomer(mockCustomerData);
+
+      expect(global.fetch).toHaveBeenCalledWith(
+        'http://localhost:5000/api/customers',
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(mockCustomerData),
+        }
+      );
+      expect(result).toEqual(mockCreatedCustomer);
+    });
+
+    it('should create a customer with only required fields', async () => {
+      const minimalData: CreateCustomerData = {
+        name: 'Jane Doe',
+        email: 'jane@example.com',
+      };
+
+      const minimalCustomer: Customer = {
+        id: '123e4567-e89b-12d3-a456-426614174001',
+        name: 'Jane Doe',
+        email: 'jane@example.com',
+        phone: null,
+        address: null,
+        createdAt: '2024-01-01T00:00:00Z',
+        updatedAt: '2024-01-01T00:00:00Z',
+      };
+
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: true,
+        json: async () => minimalCustomer,
+      });
+
+      const result = await apiClient.createCustomer(minimalData);
+
+      expect(result).toEqual(minimalCustomer);
+      expect(global.fetch).toHaveBeenCalledWith(
+        'http://localhost:5000/api/customers',
+        expect.objectContaining({
+          body: JSON.stringify(minimalData),
+        })
+      );
+    });
+
+    it('should handle 400 validation error with field-level errors', async () => {
+      const validationErrors = {
+        Name: ['Name is required'],
+        Email: ['Email is invalid', 'Email is required'],
+      };
+
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: false,
+        status: 400,
+        json: async () => ({
+          message: 'Validation failed',
+          errors: validationErrors,
+        }),
+      });
+
+      try {
+        await apiClient.createCustomer(mockCustomerData);
+        fail('Should have thrown');
+      } catch (error) {
+        expect(error).toBeInstanceOf(ApiError);
+        const apiError = error as ApiError;
+        expect(apiError.status).toBe(400);
+        expect(apiError.message).toBe('Validation failed');
+        expect(apiError.errors).toEqual(validationErrors);
+        expect(apiError.isRetryable).toBe(false);
+      }
+    });
+
+    it('should handle 400 error without field-level errors', async () => {
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: false,
+        status: 400,
+        json: async () => ({
+          message: 'Bad request',
+        }),
+      });
+
+      try {
+        await apiClient.createCustomer(mockCustomerData);
+        fail('Should have thrown');
+      } catch (error) {
+        expect(error).toBeInstanceOf(ApiError);
+        const apiError = error as ApiError;
+        expect(apiError.status).toBe(400);
+        expect(apiError.message).toBe('Bad request');
+        expect(apiError.errors).toBeUndefined();
+      }
+    });
+
+    it('should handle 409 duplicate email error', async () => {
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: false,
+        status: 409,
+        json: async () => ({
+          message: 'A customer with this email already exists',
+        }),
+      });
+
+      try {
+        await apiClient.createCustomer(mockCustomerData);
+        fail('Should have thrown');
+      } catch (error) {
+        expect(error).toBeInstanceOf(ApiError);
+        const apiError = error as ApiError;
+        expect(apiError.status).toBe(409);
+        expect(apiError.message).toBe('A customer with this email already exists');
+        expect(apiError.isRetryable).toBe(false);
+      }
+    });
+
+    it('should handle 409 error with fallback message when server message is missing', async () => {
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: false,
+        status: 409,
+        json: async () => ({}),
+      });
+
+      try {
+        await apiClient.createCustomer(mockCustomerData);
+        fail('Should have thrown');
+      } catch (error) {
+        expect(error).toBeInstanceOf(ApiError);
+        const apiError = error as ApiError;
+        expect(apiError.status).toBe(409);
+        expect(apiError.message).toBe('A customer with this email already exists');
+      }
+    });
+
+    describe('error handling with retries', () => {
+      beforeEach(() => {
+        jest.useFakeTimers();
+      });
+
+      afterEach(() => {
+        jest.useRealTimers();
+      });
+
+      it('should handle network error after retries', async () => {
+        global.fetch = jest.fn().mockRejectedValue(new TypeError('Failed to fetch'));
+
+        const resultPromise = apiClient.createCustomer(mockCustomerData);
+
+        // Set up expectation before running timers
+        const expectation = expect(resultPromise).rejects.toMatchObject({
+          message: 'Network error: Unable to reach the API server. Please check your connection.',
+          isRetryable: true,
+        });
+
+        // Run all timers to exhaust retries
+        await jest.runAllTimersAsync();
+
+        await expectation;
+      });
+
+      it('should handle HTTP error without JSON body after retries', async () => {
+        global.fetch = jest.fn().mockResolvedValue({
+          ok: false,
+          status: 500,
+          json: async () => {
+            throw new Error('Invalid JSON');
+          },
+        });
+
+        const resultPromise = apiClient.createCustomer(mockCustomerData);
+
+        const expectation = expect(resultPromise).rejects.toMatchObject({
+          status: 500,
+          message: 'A server error occurred. Please try again later.',
+        });
+
+        await jest.runAllTimersAsync();
+
+        await expectation;
+      });
+
+      it('should handle unknown error types after retries', async () => {
+        global.fetch = jest.fn().mockRejectedValue(new Error('Unknown error'));
+
+        const resultPromise = apiClient.createCustomer(mockCustomerData);
+
+        const expectation = expect(resultPromise).rejects.toMatchObject({
+          message: 'An unexpected error occurred while communicating with the API.',
+        });
+
+        await jest.runAllTimersAsync();
+
+        await expectation;
+      });
+    });
+
+    it('should not retry on 400 validation error', async () => {
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: false,
+        status: 400,
+        json: async () => ({ message: 'Validation failed' }),
+      });
+
+      await expect(apiClient.createCustomer(mockCustomerData)).rejects.toThrow(ApiError);
+
+      // Should only call once (no retries)
+      expect(global.fetch).toHaveBeenCalledTimes(1);
+    });
+
+    it('should not retry on 409 duplicate email error', async () => {
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: false,
+        status: 409,
+        json: async () => ({ message: 'Email already exists' }),
+      });
+
+      await expect(apiClient.createCustomer(mockCustomerData)).rejects.toThrow(ApiError);
+
+      // Should only call once (no retries)
+      expect(global.fetch).toHaveBeenCalledTimes(1);
+    });
+
+    describe('retry mechanism for createCustomer', () => {
+      beforeEach(() => {
+        jest.useFakeTimers();
+      });
+
+      afterEach(() => {
+        jest.useRealTimers();
+      });
+
+      it('should retry on 500 server error', async () => {
+        // Fail once, then succeed
+        global.fetch = jest
+          .fn()
+          .mockResolvedValueOnce({
+            ok: false,
+            status: 500,
+            json: async () => ({ message: 'Server error' }),
+          })
+          .mockResolvedValueOnce({
+            ok: true,
+            json: async () => mockCreatedCustomer,
+          });
+
+        const resultPromise = apiClient.createCustomer(mockCustomerData);
+
+        await jest.runAllTimersAsync();
+
+        const result = await resultPromise;
+
+        expect(global.fetch).toHaveBeenCalledTimes(2);
+        expect(result).toEqual(mockCreatedCustomer);
+      });
+
+      it('should retry on network error', async () => {
+        // Fail with network error, then succeed
+        global.fetch = jest
+          .fn()
+          .mockRejectedValueOnce(new TypeError('Network error'))
+          .mockResolvedValueOnce({
+            ok: true,
+            json: async () => mockCreatedCustomer,
+          });
+
+        const resultPromise = apiClient.createCustomer(mockCustomerData);
+
+        await jest.runAllTimersAsync();
+
+        const result = await resultPromise;
+
+        expect(global.fetch).toHaveBeenCalledTimes(2);
+        expect(result).toEqual(mockCreatedCustomer);
+      });
+
+      it('should fail after max retries on 500 error', async () => {
+        global.fetch = jest.fn().mockResolvedValue({
+          ok: false,
+          status: 500,
+          json: async () => ({ message: 'Server error' }),
+        });
+
+        const resultPromise = apiClient.createCustomer(mockCustomerData);
+
+        const expectation = expect(resultPromise).rejects.toMatchObject({
+          message: 'Server error',
+        });
+
+        await jest.runAllTimersAsync();
+
+        await expectation;
+
+        // Should try 4 times total (initial + 3 retries)
+        expect(global.fetch).toHaveBeenCalledTimes(4);
+      });
+
+      it('should retry on 429 rate limit error', async () => {
+        global.fetch = jest
+          .fn()
+          .mockResolvedValueOnce({
+            ok: false,
+            status: 429,
+            json: async () => ({ message: 'Too many requests' }),
+          })
+          .mockResolvedValueOnce({
+            ok: true,
+            json: async () => mockCreatedCustomer,
+          });
+
+        const resultPromise = apiClient.createCustomer(mockCustomerData);
+
+        await jest.runAllTimersAsync();
+
+        const result = await resultPromise;
+
+        expect(global.fetch).toHaveBeenCalledTimes(2);
+        expect(result).toEqual(mockCreatedCustomer);
+      });
     });
   });
 });
