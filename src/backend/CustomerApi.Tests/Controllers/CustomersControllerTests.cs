@@ -4,6 +4,7 @@ using CustomerApi.DTOs;
 using CustomerApi.Mappings;
 using CustomerApi.Models;
 using CustomerApi.Repositories;
+using CustomerApi.Services;
 using FluentAssertions;
 using Microsoft.AspNetCore.Mvc;
 using Moq;
@@ -13,12 +14,14 @@ namespace CustomerApi.Tests.Controllers;
 public class CustomersControllerTests
 {
     private readonly Mock<ICustomerRepository> _mockRepository;
+    private readonly Mock<IRandomCustomerGenerator> _mockRandomGenerator;
     private readonly IMapper _mapper;
     private readonly CustomersController _controller;
 
     public CustomersControllerTests()
     {
         _mockRepository = new Mock<ICustomerRepository>();
+        _mockRandomGenerator = new Mock<IRandomCustomerGenerator>();
 
         // Setup AutoMapper with actual profile
         var config = new MapperConfiguration(cfg =>
@@ -27,7 +30,7 @@ public class CustomersControllerTests
         });
         _mapper = config.CreateMapper();
 
-        _controller = new CustomersController(_mockRepository.Object, _mapper);
+        _controller = new CustomersController(_mockRepository.Object, _mapper, _mockRandomGenerator.Object);
     }
 
     #region CreateCustomer Tests
@@ -1981,6 +1984,373 @@ public class CustomersControllerTests
         deletedCustomer!.Id.Should().Be(customerId);
         deletedCustomer.Name.Should().Be(existingCustomer.Name);
         deletedCustomer.Email.Should().Be(existingCustomer.Email);
+    }
+
+    #endregion
+
+    #region BulkCreateCustomers Tests
+
+    [Fact]
+    public async Task BulkCreateCustomers_ValidRequest_ReturnsSuccessResponse()
+    {
+        // Arrange
+        var request = new BulkCreateRequestDto { Count = 5 };
+        var generatedDtos = Enumerable.Range(1, 5).Select(i => new CreateCustomerDto
+        {
+            Name = $"Test Customer {i}",
+            Email = $"test{i}@example.com",
+            Phone = $"+1-123-456-{i:D4}",
+            Address = $"123 Test St {i}"
+        }).ToList();
+
+        _mockRandomGenerator
+            .Setup(g => g.GenerateCustomers(5))
+            .Returns(generatedDtos);
+
+        _mockRepository
+            .Setup(r => r.EmailExistsAsync(It.IsAny<string>()))
+            .ReturnsAsync(false);
+
+        _mockRepository
+            .Setup(r => r.BulkCreateAsync(It.IsAny<List<Customer>>()))
+            .Returns(Task.CompletedTask);
+
+        // Act
+        var result = await _controller.BulkCreateCustomers(request);
+
+        // Assert
+        result.Result.Should().BeOfType<OkObjectResult>();
+        var okResult = result.Result as OkObjectResult;
+        var response = okResult!.Value as BulkCreateResponseDto;
+
+        response.Should().NotBeNull();
+        response!.SuccessCount.Should().Be(5);
+        response.FailureCount.Should().Be(0);
+        response.CreatedCustomers.Should().HaveCount(5);
+        response.Errors.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task BulkCreateCustomers_CountZero_ReturnsBadRequest()
+    {
+        // Arrange
+        var request = new BulkCreateRequestDto { Count = 0 };
+
+        // Act
+        var result = await _controller.BulkCreateCustomers(request);
+
+        // Assert
+        result.Result.Should().BeOfType<BadRequestObjectResult>();
+    }
+
+    [Fact]
+    public async Task BulkCreateCustomers_CountOver1000_ReturnsBadRequest()
+    {
+        // Arrange
+        var request = new BulkCreateRequestDto { Count = 1001 };
+
+        // Act
+        var result = await _controller.BulkCreateCustomers(request);
+
+        // Assert
+        result.Result.Should().BeOfType<BadRequestObjectResult>();
+        var badRequestResult = result.Result as BadRequestObjectResult;
+        var errorResponse = badRequestResult!.Value;
+        var messageProperty = errorResponse!.GetType().GetProperty("message");
+        var message = messageProperty!.GetValue(errorResponse) as string;
+        message.Should().Contain("1 and 1000");
+    }
+
+    [Fact]
+    public async Task BulkCreateCustomers_DuplicateEmail_AddsError()
+    {
+        // Arrange
+        var request = new BulkCreateRequestDto { Count = 3 };
+        var generatedDtos = new List<CreateCustomerDto>
+        {
+            new CreateCustomerDto { Name = "Customer 1", Email = "test1@example.com" },
+            new CreateCustomerDto { Name = "Customer 2", Email = "duplicate@example.com" },
+            new CreateCustomerDto { Name = "Customer 3", Email = "test3@example.com" }
+        };
+
+        _mockRandomGenerator
+            .Setup(g => g.GenerateCustomers(3))
+            .Returns(generatedDtos);
+
+        _mockRepository
+            .Setup(r => r.EmailExistsAsync("duplicate@example.com"))
+            .ReturnsAsync(true);
+
+        _mockRepository
+            .Setup(r => r.EmailExistsAsync(It.Is<string>(e => e != "duplicate@example.com")))
+            .ReturnsAsync(false);
+
+        _mockRepository
+            .Setup(r => r.BulkCreateAsync(It.IsAny<List<Customer>>()))
+            .Returns(Task.CompletedTask);
+
+        // Act
+        var result = await _controller.BulkCreateCustomers(request);
+
+        // Assert
+        var okResult = result.Result as OkObjectResult;
+        var response = okResult!.Value as BulkCreateResponseDto;
+
+        response.Should().NotBeNull();
+        response!.SuccessCount.Should().Be(2);
+        response.FailureCount.Should().Be(1);
+        response.Errors.Should().HaveCount(1);
+        response.Errors[0].Index.Should().Be(1);
+        response.Errors[0].Message.Should().Contain("duplicate@example.com");
+    }
+
+    [Fact]
+    public async Task BulkCreateCustomers_UsesBulkInsert()
+    {
+        // Arrange
+        var request = new BulkCreateRequestDto { Count = 10 };
+        var generatedDtos = Enumerable.Range(1, 10).Select(i => new CreateCustomerDto
+        {
+            Name = $"Customer {i}",
+            Email = $"test{i}@example.com"
+        }).ToList();
+
+        _mockRandomGenerator
+            .Setup(g => g.GenerateCustomers(10))
+            .Returns(generatedDtos);
+
+        _mockRepository
+            .Setup(r => r.EmailExistsAsync(It.IsAny<string>()))
+            .ReturnsAsync(false);
+
+        _mockRepository
+            .Setup(r => r.BulkCreateAsync(It.IsAny<List<Customer>>()))
+            .Returns(Task.CompletedTask);
+
+        // Act
+        await _controller.BulkCreateCustomers(request);
+
+        // Assert
+        _mockRepository.Verify(r => r.BulkCreateAsync(It.Is<List<Customer>>(list => list.Count == 10)), Times.Once);
+    }
+
+    [Fact]
+    public async Task BulkCreateCustomers_PartialFailure_CommitsSuccessful()
+    {
+        // Arrange
+        var request = new BulkCreateRequestDto { Count = 5 };
+        var generatedDtos = new List<CreateCustomerDto>
+        {
+            new CreateCustomerDto { Name = "Customer 1", Email = "test1@example.com" },
+            new CreateCustomerDto { Name = "Customer 2", Email = "duplicate1@example.com" },
+            new CreateCustomerDto { Name = "Customer 3", Email = "test3@example.com" },
+            new CreateCustomerDto { Name = "Customer 4", Email = "duplicate2@example.com" },
+            new CreateCustomerDto { Name = "Customer 5", Email = "test5@example.com" }
+        };
+
+        _mockRandomGenerator
+            .Setup(g => g.GenerateCustomers(5))
+            .Returns(generatedDtos);
+
+        _mockRepository
+            .Setup(r => r.EmailExistsAsync("duplicate1@example.com"))
+            .ReturnsAsync(true);
+
+        _mockRepository
+            .Setup(r => r.EmailExistsAsync("duplicate2@example.com"))
+            .ReturnsAsync(true);
+
+        _mockRepository
+            .Setup(r => r.EmailExistsAsync(It.Is<string>(e => !e.Contains("duplicate"))))
+            .ReturnsAsync(false);
+
+        _mockRepository
+            .Setup(r => r.BulkCreateAsync(It.IsAny<List<Customer>>()))
+            .Returns(Task.CompletedTask);
+
+        // Act
+        var result = await _controller.BulkCreateCustomers(request);
+
+        // Assert
+        var okResult = result.Result as OkObjectResult;
+        var response = okResult!.Value as BulkCreateResponseDto;
+
+        response.Should().NotBeNull();
+        response!.SuccessCount.Should().Be(3);
+        response.FailureCount.Should().Be(2);
+        response.CreatedCustomers.Should().HaveCount(3);
+        response.Errors.Should().HaveCount(2);
+
+        // Verify BulkCreateAsync was called with only successful customers
+        _mockRepository.Verify(r => r.BulkCreateAsync(It.Is<List<Customer>>(list => list.Count == 3)), Times.Once);
+    }
+
+    [Fact]
+    public async Task BulkCreateCustomers_AllFail_ReturnsAllErrors()
+    {
+        // Arrange
+        var request = new BulkCreateRequestDto { Count = 3 };
+        var generatedDtos = new List<CreateCustomerDto>
+        {
+            new CreateCustomerDto { Name = "Customer 1", Email = "exists1@example.com" },
+            new CreateCustomerDto { Name = "Customer 2", Email = "exists2@example.com" },
+            new CreateCustomerDto { Name = "Customer 3", Email = "exists3@example.com" }
+        };
+
+        _mockRandomGenerator
+            .Setup(g => g.GenerateCustomers(3))
+            .Returns(generatedDtos);
+
+        _mockRepository
+            .Setup(r => r.EmailExistsAsync(It.IsAny<string>()))
+            .ReturnsAsync(true);
+
+        // Act
+        var result = await _controller.BulkCreateCustomers(request);
+
+        // Assert
+        var okResult = result.Result as OkObjectResult;
+        var response = okResult!.Value as BulkCreateResponseDto;
+
+        response.Should().NotBeNull();
+        response!.SuccessCount.Should().Be(0);
+        response.FailureCount.Should().Be(3);
+        response.CreatedCustomers.Should().BeEmpty();
+        response.Errors.Should().HaveCount(3);
+
+        // Verify BulkCreateAsync was never called since all failed
+        _mockRepository.Verify(r => r.BulkCreateAsync(It.IsAny<List<Customer>>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task BulkCreateCustomers_SetsTimestampsCorrectly()
+    {
+        // Arrange
+        var request = new BulkCreateRequestDto { Count = 2 };
+        var generatedDtos = new List<CreateCustomerDto>
+        {
+            new CreateCustomerDto { Name = "Customer 1", Email = "test1@example.com" },
+            new CreateCustomerDto { Name = "Customer 2", Email = "test2@example.com" }
+        };
+
+        _mockRandomGenerator
+            .Setup(g => g.GenerateCustomers(2))
+            .Returns(generatedDtos);
+
+        _mockRepository
+            .Setup(r => r.EmailExistsAsync(It.IsAny<string>()))
+            .ReturnsAsync(false);
+
+        List<Customer>? capturedCustomers = null;
+        _mockRepository
+            .Setup(r => r.BulkCreateAsync(It.IsAny<List<Customer>>()))
+            .Callback<List<Customer>>(customers => capturedCustomers = customers)
+            .Returns(Task.CompletedTask);
+
+        // Act
+        var beforeCall = DateTime.UtcNow;
+        await _controller.BulkCreateCustomers(request);
+        var afterCall = DateTime.UtcNow;
+
+        // Assert
+        capturedCustomers.Should().NotBeNull();
+        capturedCustomers.Should().HaveCount(2);
+
+        foreach (var customer in capturedCustomers!)
+        {
+            customer.Id.Should().NotBeEmpty();
+            customer.CreatedAt.Should().BeOnOrAfter(beforeCall).And.BeOnOrBefore(afterCall);
+            customer.UpdatedAt.Should().BeOnOrAfter(beforeCall).And.BeOnOrBefore(afterCall);
+            customer.CreatedAt.Kind.Should().Be(DateTimeKind.Utc);
+            customer.UpdatedAt.Kind.Should().Be(DateTimeKind.Utc);
+        }
+    }
+
+    [Fact]
+    public async Task BulkCreateCustomers_InvalidModelState_ReturnsBadRequest()
+    {
+        // Arrange
+        var request = new BulkCreateRequestDto { Count = 5 };
+        _controller.ModelState.AddModelError("Count", "Invalid count");
+
+        // Act
+        var result = await _controller.BulkCreateCustomers(request);
+
+        // Assert
+        result.Result.Should().BeOfType<BadRequestObjectResult>();
+        _mockRandomGenerator.Verify(g => g.GenerateCustomers(It.IsAny<int>()), Times.Never);
+        _mockRepository.Verify(r => r.BulkCreateAsync(It.IsAny<List<Customer>>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task BulkCreateCustomers_Count1_CreatesOneCustomer()
+    {
+        // Arrange
+        var request = new BulkCreateRequestDto { Count = 1 };
+        var generatedDtos = new List<CreateCustomerDto>
+        {
+            new CreateCustomerDto { Name = "Single Customer", Email = "single@example.com" }
+        };
+
+        _mockRandomGenerator
+            .Setup(g => g.GenerateCustomers(1))
+            .Returns(generatedDtos);
+
+        _mockRepository
+            .Setup(r => r.EmailExistsAsync(It.IsAny<string>()))
+            .ReturnsAsync(false);
+
+        _mockRepository
+            .Setup(r => r.BulkCreateAsync(It.IsAny<List<Customer>>()))
+            .Returns(Task.CompletedTask);
+
+        // Act
+        var result = await _controller.BulkCreateCustomers(request);
+
+        // Assert
+        var okResult = result.Result as OkObjectResult;
+        var response = okResult!.Value as BulkCreateResponseDto;
+
+        response.Should().NotBeNull();
+        response!.SuccessCount.Should().Be(1);
+        response.FailureCount.Should().Be(0);
+        response.CreatedCustomers.Should().HaveCount(1);
+    }
+
+    [Fact]
+    public async Task BulkCreateCustomers_Count1000_CreatesMaximumCustomers()
+    {
+        // Arrange
+        var request = new BulkCreateRequestDto { Count = 1000 };
+        var generatedDtos = Enumerable.Range(1, 1000).Select(i => new CreateCustomerDto
+        {
+            Name = $"Customer {i}",
+            Email = $"test{i}@example.com"
+        }).ToList();
+
+        _mockRandomGenerator
+            .Setup(g => g.GenerateCustomers(1000))
+            .Returns(generatedDtos);
+
+        _mockRepository
+            .Setup(r => r.EmailExistsAsync(It.IsAny<string>()))
+            .ReturnsAsync(false);
+
+        _mockRepository
+            .Setup(r => r.BulkCreateAsync(It.IsAny<List<Customer>>()))
+            .Returns(Task.CompletedTask);
+
+        // Act
+        var result = await _controller.BulkCreateCustomers(request);
+
+        // Assert
+        var okResult = result.Result as OkObjectResult;
+        var response = okResult!.Value as BulkCreateResponseDto;
+
+        response.Should().NotBeNull();
+        response!.SuccessCount.Should().Be(1000);
+        response.FailureCount.Should().Be(0);
+        response.CreatedCustomers.Should().HaveCount(1000);
     }
 
     #endregion

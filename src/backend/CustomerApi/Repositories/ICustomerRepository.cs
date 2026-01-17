@@ -16,6 +16,7 @@ public interface ICustomerRepository
         string? sortBy = null,
         string? sortOrder = null);
     Task<Customer> CreateAsync(Customer customer);
+    Task BulkCreateAsync(List<Customer> customers);
     Task<Customer> UpdateAsync(Customer customer);
     Task DeleteAsync(Customer customer);
     Task<bool> ExistsAsync(Guid id);

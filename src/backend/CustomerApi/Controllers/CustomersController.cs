@@ -2,6 +2,7 @@ using AutoMapper;
 using CustomerApi.DTOs;
 using CustomerApi.Models;
 using CustomerApi.Repositories;
+using CustomerApi.Services;
 using Microsoft.AspNetCore.Mvc;
 
 namespace CustomerApi.Controllers;
@@ -12,11 +13,13 @@ public class CustomersController : ControllerBase
 {
     private readonly ICustomerRepository _repository;
     private readonly IMapper _mapper;
+    private readonly IRandomCustomerGenerator _randomCustomerGenerator;
 
-    public CustomersController(ICustomerRepository repository, IMapper mapper)
+    public CustomersController(ICustomerRepository repository, IMapper mapper, IRandomCustomerGenerator randomCustomerGenerator)
     {
         _repository = repository;
         _mapper = mapper;
+        _randomCustomerGenerator = randomCustomerGenerator;
     }
 
     /// <summary>
@@ -208,5 +211,81 @@ public class CustomersController : ControllerBase
         await _repository.DeleteAsync(existingCustomer);
 
         return NoContent();
+    }
+
+    /// <summary>
+    /// Creates multiple random customers in bulk
+    /// </summary>
+    /// <param name="request">Bulk creation request with customer count</param>
+    /// <returns>Bulk creation response with success/failure counts and created customers</returns>
+    [HttpPost("bulk")]
+    [ProducesResponseType(typeof(BulkCreateResponseDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<BulkCreateResponseDto>> BulkCreateCustomers([FromBody] BulkCreateRequestDto request)
+    {
+        if (!ModelState.IsValid)
+        {
+            return BadRequest(ModelState);
+        }
+
+        // Validate count is within acceptable range
+        if (request.Count < 1 || request.Count > 1000)
+        {
+            return BadRequest(new { message = "Count must be between 1 and 1000" });
+        }
+
+        // Generate random customer data
+        var customerDtos = _randomCustomerGenerator.GenerateCustomers(request.Count);
+
+        var response = new BulkCreateResponseDto();
+        var customersToCreate = new List<Customer>();
+
+        // Process each customer
+        for (int i = 0; i < customerDtos.Count; i++)
+        {
+            try
+            {
+                var dto = customerDtos[i];
+
+                // Check if email already exists
+                if (await _repository.EmailExistsAsync(dto.Email))
+                {
+                    response.Errors.Add(new BulkCreateError
+                    {
+                        Index = i,
+                        Message = $"Email {dto.Email} already exists"
+                    });
+                    response.FailureCount++;
+                    continue;
+                }
+
+                // Map DTO to entity
+                var customer = _mapper.Map<Customer>(dto);
+                customer.Id = Guid.NewGuid();
+                customer.CreatedAt = DateTime.UtcNow;
+                customer.UpdatedAt = DateTime.UtcNow;
+
+                customersToCreate.Add(customer);
+            }
+            catch (Exception ex)
+            {
+                response.Errors.Add(new BulkCreateError
+                {
+                    Index = i,
+                    Message = ex.Message
+                });
+                response.FailureCount++;
+            }
+        }
+
+        // Bulk insert successful customers using AddRange for performance
+        if (customersToCreate.Any())
+        {
+            await _repository.BulkCreateAsync(customersToCreate);
+            response.SuccessCount = customersToCreate.Count;
+            response.CreatedCustomers = _mapper.Map<List<CustomerResponseDto>>(customersToCreate);
+        }
+
+        return Ok(response);
     }
 }
