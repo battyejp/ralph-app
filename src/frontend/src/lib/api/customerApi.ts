@@ -1,4 +1,4 @@
-import type { Customer, PaginatedResponse, CustomerSearchParams } from './types';
+import type { Customer, PaginatedResponse, CustomerSearchParams, CreateCustomerData } from './types';
 
 /**
  * Custom error class for API-related errors
@@ -30,6 +30,8 @@ function getUserFriendlyErrorMessage(status: number, defaultMessage?: string): s
       return 'The requested resource could not be found.';
     case 408:
       return 'The request took too long to complete. Please try again.';
+    case 409:
+      return defaultMessage || 'A customer with this email already exists';
     case 429:
       return 'Too many requests. Please wait a moment and try again.';
     case 500:
@@ -153,6 +155,87 @@ class CustomerApiClient {
   }
 
   /**
+   * Performs a POST request with error handling and retry mechanism
+   */
+  private async postWithErrorHandling<T>(
+    url: string,
+    data: unknown,
+    retryCount: number = 0
+  ): Promise<T> {
+    try {
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data),
+      });
+
+      if (!response.ok) {
+        // Try to parse error response
+        let errorMessage: string;
+        let errors: Record<string, string[]> | undefined;
+
+        try {
+          const errorData = await response.json();
+          if (errorData.message) {
+            errorMessage = errorData.message;
+          } else {
+            errorMessage = getUserFriendlyErrorMessage(response.status);
+          }
+          if (errorData.errors) {
+            errors = errorData.errors;
+          }
+        } catch {
+          // If JSON parsing fails, use user-friendly error message
+          errorMessage = getUserFriendlyErrorMessage(response.status);
+        }
+
+        const isRetryable = isRetryableError(response.status);
+
+        // Retry if error is retryable and we haven't exceeded max retries
+        if (isRetryable && retryCount < this.maxRetries) {
+          const delayMs = this.retryDelay * Math.pow(2, retryCount); // Exponential backoff
+          await this.delay(delayMs);
+          return this.postWithErrorHandling<T>(url, data, retryCount + 1);
+        }
+
+        throw new ApiError(errorMessage, response.status, errors, isRetryable);
+      }
+
+      return await response.json();
+    } catch (error) {
+      // Network error or other fetch-related error
+      if (error instanceof ApiError) {
+        throw error;
+      }
+
+      if (error instanceof TypeError) {
+        // Network errors are retryable
+        if (retryCount < this.maxRetries) {
+          const delayMs = this.retryDelay * Math.pow(2, retryCount);
+          await this.delay(delayMs);
+          return this.postWithErrorHandling<T>(url, data, retryCount + 1);
+        }
+
+        throw new ApiError(
+          'Network error: Unable to reach the API server. Please check your connection.',
+          undefined,
+          undefined,
+          true
+        );
+      }
+
+      throw new ApiError(
+        'An unexpected error occurred while communicating with the API.',
+        undefined,
+        undefined,
+        false
+      );
+    }
+  }
+
+  /**
    * Builds query string from search parameters
    */
   private buildQueryString(params: CustomerSearchParams): string {
@@ -199,6 +282,18 @@ class CustomerApiClient {
   async getCustomerById(id: string): Promise<Customer> {
     const url = `${this.baseUrl}/api/customers/${id}`;
     return this.fetchWithErrorHandling<Customer>(url);
+  }
+
+  /**
+   * Create a new customer
+   * @param data - The customer data to create
+   * @returns The created customer object
+   * @throws ApiError with status 400 if validation fails (errors contain field-level messages)
+   * @throws ApiError with status 409 if email already exists
+   */
+  async createCustomer(data: CreateCustomerData): Promise<Customer> {
+    const url = `${this.baseUrl}/api/customers`;
+    return this.postWithErrorHandling<Customer>(url, data);
   }
 }
 

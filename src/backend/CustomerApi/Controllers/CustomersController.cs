@@ -108,11 +108,18 @@ public class CustomersController : ControllerBase
     [HttpPost]
     [ProducesResponseType(typeof(CustomerResponseDto), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
     public async Task<ActionResult<CustomerResponseDto>> CreateCustomer([FromBody] CreateCustomerDto createDto)
     {
         if (!ModelState.IsValid)
         {
             return BadRequest(ModelState);
+        }
+
+        // Check if email already exists
+        if (await _repository.EmailExistsAsync(createDto.Email))
+        {
+            return Conflict(new { message = "A customer with this email already exists" });
         }
 
         // Map DTO to entity

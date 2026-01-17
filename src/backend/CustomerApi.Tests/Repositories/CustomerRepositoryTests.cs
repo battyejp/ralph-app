@@ -510,6 +510,68 @@ public class CustomerRepositoryTests
 
     #endregion
 
+    #region EmailExistsAsync Tests
+
+    [Fact]
+    public async Task EmailExistsAsync_ExistingEmail_ReturnsTrue()
+    {
+        using var context = CreateContext();
+        var customer = CreateTestCustomer("Test Customer", "existing@example.com");
+        context.Customers.Add(customer);
+        await context.SaveChangesAsync();
+        var repository = new CustomerRepository(context);
+
+        var result = await repository.EmailExistsAsync("existing@example.com");
+
+        result.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task EmailExistsAsync_NonExistingEmail_ReturnsFalse()
+    {
+        using var context = CreateContext();
+        var repository = new CustomerRepository(context);
+
+        var result = await repository.EmailExistsAsync("nonexistent@example.com");
+
+        result.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task EmailExistsAsync_DeletedCustomerEmail_ReturnsFalse()
+    {
+        using var context = CreateContext();
+        var customer = CreateTestCustomer("Deleted Customer", "deleted@example.com");
+        customer.IsDeleted = true;
+        context.Customers.Add(customer);
+        await context.SaveChangesAsync();
+        var repository = new CustomerRepository(context);
+
+        var result = await repository.EmailExistsAsync("deleted@example.com");
+
+        result.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task EmailExistsAsync_CaseSensitiveMatch_ReturnsCorrectResult()
+    {
+        using var context = CreateContext();
+        var customer = CreateTestCustomer("Test Customer", "Test@Example.com");
+        context.Customers.Add(customer);
+        await context.SaveChangesAsync();
+        var repository = new CustomerRepository(context);
+
+        // Exact match
+        var exactMatch = await repository.EmailExistsAsync("Test@Example.com");
+        exactMatch.Should().BeTrue();
+
+        // Different case - should not match (email comparison is case-sensitive in this implementation)
+        var differentCase = await repository.EmailExistsAsync("test@example.com");
+        differentCase.Should().BeFalse();
+    }
+
+    #endregion
+
     #region ExistsAsync Tests
 
     [Fact]

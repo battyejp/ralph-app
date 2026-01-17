@@ -7,6 +7,7 @@ on:
       - 'feat/**'
       - 'bugfix/**'
       - 'hotfix/**'
+      - 'ralph/**'
     paths:
       - 'src/backend/**'
       - '.github/workflows/backend-deploy-feature.yml'
@@ -30,9 +31,15 @@ env:
   APP_NAME: 'ralph-app-api'
 
 jobs:
-  build-and-deploy:
-    name: Build and Deploy Feature
+  build:
+    name: Build
+    uses: ./.github/workflows/backend-build-reusable.yml
+
+  deploy-feature:
+    name: Deploy Feature
+    needs: build
     runs-on: ubuntu-latest
+    environment: test
     # Run on push to feature branches, manual trigger, or when 'deploy' label is added to PR
     if: |
       github.event_name == 'push' ||
@@ -53,25 +60,11 @@ jobs:
           echo "env-name=$ENV_NAME" >> $GITHUB_OUTPUT
           echo "Feature environment: $ENV_NAME"
 
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v4
+      - name: Download artifact
+        uses: actions/download-artifact@v4
         with:
-          dotnet-version: ${{ env.DOTNET_VERSION }}
-
-      - name: Restore dependencies
-        run: dotnet restore
-        working-directory: src/backend
-
-      - name: Build
-        run: dotnet build --configuration Release --no-restore
-        working-directory: src/backend
-
-      - name: Run tests
-        run: dotnet test --configuration Release --no-build --verbosity normal
-        working-directory: src/backend
-
-      - name: Publish
-        run: dotnet publish src/backend/CustomerApi/CustomerApi.csproj -c Release -o ./publish
+          name: ${{ needs.build.outputs.artifact-name }}
+          path: ./publish
 
       - name: Login to Azure
         uses: azure/login@v2
@@ -84,17 +77,44 @@ jobs:
         uses: azure/cli@v2
         with:
           inlineScript: |
-            # Check if App Service exists, create if not
             SLOT_NAME="${{ steps.env-name.outputs.env-name }}"
             APP_SERVICE="${{ env.APP_NAME }}-test"
 
-            # Try to create deployment slot (will fail silently if exists)
-            az webapp deployment slot create \
+            # Check if slot exists
+            SLOT_EXISTS=$(az webapp deployment slot list \
+              --name $APP_SERVICE \
+              --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+              --query "[?name=='$SLOT_NAME'].name" -o tsv)
+
+            if [ -z "$SLOT_EXISTS" ]; then
+              echo "Creating deployment slot: $SLOT_NAME"
+              az webapp deployment slot create \
+                --name $APP_SERVICE \
+                --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+                --slot $SLOT_NAME \
+                --configuration-source $APP_SERVICE
+            else
+              echo "Slot $SLOT_NAME already exists"
+            fi
+
+      - name: Configure CORS for feature frontend
+        uses: azure/cli@v2
+        with:
+          inlineScript: |
+            SLOT_NAME="${{ steps.env-name.outputs.env-name }}"
+            APP_SERVICE="${{ env.APP_NAME }}-test"
+            FRONTEND_URL="https://ralph-app-web-test-${SLOT_NAME}.azurewebsites.net"
+            
+            echo "Configuring CORS to allow: $FRONTEND_URL"
+            
+            # Set CORS allowed origins via app settings
+            az webapp config appsettings set \
               --name $APP_SERVICE \
               --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
               --slot $SLOT_NAME \
-              --configuration-source $APP_SERVICE \
-              2>/dev/null || echo "Slot already exists or using standalone app"
+              --settings \
+                "AllowedOrigins__0=http://localhost:3000" \
+                "AllowedOrigins__1=$FRONTEND_URL"
 
       - name: Deploy to Feature Environment
         uses: azure/webapps-deploy@v3
@@ -116,17 +136,24 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
+            const envName = '${{ steps.env-name.outputs.env-name }}';
+            const apiUrl = '${{ steps.deployment-url.outputs.url }}';
+            const frontendUrl = `https://ralph-app-web-test-${envName}.azurewebsites.net`;
             github.rest.issues.createComment({
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: `## Feature Environment Deployed
+              body: `## 🚀 Feature Backend Environment Deployed
 
               Your feature environment is ready:
 
-              **API URL:** ${{ steps.deployment-url.outputs.url }}
-              **Swagger:** ${{ steps.deployment-url.outputs.url }}/swagger
+              **Backend API URL:** ${apiUrl}
+              **Swagger:** ${apiUrl}/swagger
+              **Frontend URL:** ${frontendUrl}
+              **Environment:** ${envName}
 
+              CORS is configured to allow requests from the feature frontend.
+              
               This environment will be automatically cleaned up when the PR is closed.`
             })
 

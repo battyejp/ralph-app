@@ -45,3 +45,13 @@ export interface ApiErrorResponse {
   message: string;
   errors?: Record<string, string[]>;
 }
+
+/**
+ * Data for creating a new customer
+ */
+export interface CreateCustomerData {
+  name: string;
+  email: string;
+  phone?: string;
+  address?: string;
+}

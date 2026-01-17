@@ -19,4 +19,5 @@ public interface ICustomerRepository
     Task<Customer> UpdateAsync(Customer customer);
     Task DeleteAsync(Customer customer);
     Task<bool> ExistsAsync(Guid id);
+    Task<bool> EmailExistsAsync(string email);
 }

@@ -6,6 +6,8 @@ import { SearchForm } from '@/components/SearchForm';
 import CustomerResultsTable from '@/components/CustomerResultsTable';
 import { PaginationControls } from '@/components/PaginationControls';
 import { CustomerDetailsDialog } from '@/components/CustomerDetailsDialog';
+import { CreateCustomerDialog } from '@/components/CreateCustomerDialog';
+import { Button } from '@/components/ui/button';
 import { customerApi } from '@/lib/api/customerApi';
 import { ApiError } from '@/lib/api/customerApi';
 import type { Customer, CustomerSearchParams } from '@/lib/api/types';
@@ -38,18 +40,30 @@ function HomeContent() {
   const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
+  // Create customer dialog state
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+
   // Initialize state from URL parameters
   useEffect(() => {
     const page = parseInt(searchParams.get('page') || '1', 10);
     const size = parseInt(searchParams.get('pageSize') || '25', 10);
     const urlSortBy = searchParams.get('sortBy') as 'name' | 'email' | 'createdAt' | null;
     const urlSortOrder = searchParams.get('sortOrder') as 'asc' | 'desc' | null;
+    const showCustomerId = searchParams.get('showCustomer');
 
     setCurrentPage(page);
     setPageSize(size);
     if (urlSortBy) setSortBy(urlSortBy);
     if (urlSortOrder) setSortOrder(urlSortOrder);
-  }, [searchParams]);
+
+    // If showCustomer parameter is present, open the customer details dialog
+    if (showCustomerId) {
+      setSelectedCustomerId(showCustomerId);
+      setIsDialogOpen(true);
+      // Clean up the URL by removing the showCustomer parameter
+      router.replace('/');
+    }
+  }, [searchParams, router]);
 
   const updateURL = (params: CustomerSearchParams) => {
     const urlParams = new URLSearchParams();
@@ -239,14 +253,25 @@ function HomeContent() {
     });
   };
 
+  const handleCustomerCreated = (customer: Customer) => {
+    // Open the customer details dialog to show the newly created customer
+    setSelectedCustomerId(customer.id);
+    setIsDialogOpen(true);
+  };
+
   return (
     <main className="flex min-h-screen flex-col items-center p-6 md:p-12 lg:p-24">
       <div className="w-full max-w-6xl space-y-8">
-        <div>
-          <h1 className="text-3xl font-bold mb-2">Customer Search</h1>
-          <p className="text-muted-foreground">
-            Search for customers by name, email, or phone number
-          </p>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-bold mb-2">Customer Search</h1>
+            <p className="text-muted-foreground">
+              Search for customers by name, email, or phone number
+            </p>
+          </div>
+          <Button onClick={() => setIsCreateDialogOpen(true)}>
+            Create Customer
+          </Button>
         </div>
 
         <SearchForm
@@ -285,6 +310,12 @@ function HomeContent() {
           customerId={selectedCustomerId}
           open={isDialogOpen}
           onOpenChange={setIsDialogOpen}
+        />
+
+        <CreateCustomerDialog
+          open={isCreateDialogOpen}
+          onOpenChange={setIsCreateDialogOpen}
+          onCustomerCreated={handleCustomerCreated}
         />
       </div>
     </main>
