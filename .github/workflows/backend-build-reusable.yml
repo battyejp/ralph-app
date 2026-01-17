@@ -1,0 +1,50 @@
+name: Backend Build (Reusable)
+
+on:
+  workflow_call:
+    outputs:
+      artifact-name:
+        description: 'Name of the uploaded artifact'
+        value: ${{ jobs.build.outputs.artifact-name }}
+
+jobs:
+  build:
+    name: Build Backend
+    runs-on: ubuntu-latest
+    outputs:
+      artifact-name: ${{ steps.artifact.outputs.name }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Restore dependencies
+        run: dotnet restore
+        working-directory: src/backend
+
+      - name: Build
+        run: dotnet build --configuration Release --no-restore
+        working-directory: src/backend
+
+      - name: Run tests
+        run: dotnet test --configuration Release --no-build --verbosity normal
+        working-directory: src/backend
+
+      - name: Publish
+        run: dotnet publish src/backend/CustomerApi/CustomerApi.csproj -c Release -o ./publish
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-${{ github.sha }}
+          path: ./publish
+          retention-days: 5
+
+      - name: Set output
+        id: artifact
+        run: echo "name=backend-${{ github.sha }}" >> $GITHUB_OUTPUT

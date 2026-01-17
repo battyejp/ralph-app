@@ -21,90 +21,9 @@ env:
 jobs:
   build:
     name: Build
-    runs-on: ubuntu-latest
-    outputs:
-      artifact-name: ${{ steps.publish.outputs.artifact-name }}
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
-          cache-dependency-path: src/frontend/package-lock.json
-
-      - name: Install dependencies
-        run: npm ci
-        working-directory: src/frontend
-
-      - name: Run tests
-        run: npm run test
-        working-directory: src/frontend
-
-      - name: Build application
-        run: npm run build
-        working-directory: src/frontend
-        env:
-          NEXT_PUBLIC_API_URL: https://ralph-app-api-test.azurewebsites.net
-          NODE_ENV: production
-
-      - name: Create deployment package
-        id: publish
-        run: |
-          # Create deployment directory with all necessary files
-          mkdir -p deploy
-          
-          # Copy Next.js build output
-          cp -r .next deploy/.next
-          cp -r node_modules deploy/node_modules
-          cp package.json deploy/package.json
-          cp package-lock.json deploy/package-lock.json
-          
-          # Copy public directory if it exists
-          if [ -d "public" ]; then
-            cp -r public deploy/public
-          fi
-          
-          # Create startup script
-          cat > deploy/server.js << 'EOF'
-          const { createServer } = require('http')
-          const { parse } = require('url')
-          const next = require('next')
-          
-          const port = process.env.PORT || 3000
-          const app = next({ dev: false })
-          const handle = app.getRequestHandler()
-          
-          app.prepare().then(() => {
-            createServer((req, res) => {
-              const parsedUrl = parse(req.url, true)
-              handle(req, res, parsedUrl)
-            }).listen(port, () => {
-              console.log(`> Ready on http://localhost:${port}`)
-            })
-          })
-          EOF
-          
-          # Update package.json start script
-          node -e "const pkg = require('./deploy/package.json'); pkg.scripts.start = 'node server.js'; require('fs').writeFileSync('./deploy/package.json', JSON.stringify(pkg, null, 2));"
-          
-          echo "artifact-name=frontend-${{ github.sha }}" >> $GITHUB_OUTPUT
-        working-directory: src/frontend
-
-      - name: Create deployment artifact
-        run: |
-          cd src/frontend/deploy
-          zip -r ../../../frontend-deploy.zip .
-
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: frontend-${{ github.sha }}
-          path: frontend-deploy.zip
-          retention-days: 5
+    uses: ./.github/workflows/frontend-build-reusable.yml
+    with:
+      api-url: https://ralph-app-api-test.azurewebsites.net
 
   deploy-test:
     name: Deploy to Test
@@ -116,7 +35,7 @@ jobs:
       - name: Download artifact
         uses: actions/download-artifact@v4
         with:
-          name: frontend-${{ github.sha }}
+          name: ${{ needs.build.outputs.artifact-name }}
 
       - name: Login to Azure
         uses: azure/login@v2
@@ -166,7 +85,7 @@ jobs:
       - name: Download artifact
         uses: actions/download-artifact@v4
         with:
-          name: frontend-${{ github.sha }}
+          name: ${{ needs.build.outputs.artifact-name }}
 
       - name: Login to Azure
         uses: azure/login@v2
