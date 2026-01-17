@@ -19,6 +19,10 @@ const customJestConfig = {
     '!src/**/__tests__/**',
     '!src/app/**',
     '!src/lib/utils.ts',
+    // Exclude shadcn/ui components that aren't used yet
+    '!src/components/ui/toast.tsx',
+    '!src/components/ui/toaster.tsx',
+    '!src/hooks/useToast.ts',
   ],
   coverageThreshold: {
     global: {

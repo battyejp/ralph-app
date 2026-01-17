@@ -1,0 +1,107 @@
+name: Frontend CI
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+      - 'feature/**'
+      - 'feat/**'
+      - 'bugfix/**'
+      - 'hotfix/**'
+    paths:
+      - 'src/frontend/**'
+      - '.github/workflows/frontend-ci.yml'
+  pull_request:
+    branches:
+      - main
+      - develop
+    paths:
+      - 'src/frontend/**'
+      - '.github/workflows/frontend-ci.yml'
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  lint-test-build:
+    name: Lint, Test & Build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: src/frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: src/frontend
+
+      - name: Run linter
+        run: npm run lint
+        working-directory: src/frontend
+
+      - name: Run tests
+        run: npm run test:coverage
+        working-directory: src/frontend
+
+      - name: Upload coverage reports
+        uses: codecov/codecov-action@v4
+        if: always()
+        with:
+          files: src/frontend/coverage/lcov.info
+          flags: frontend
+          name: frontend-coverage
+        continue-on-error: true
+
+      - name: Build application
+        run: npm run build
+        working-directory: src/frontend
+        env:
+          NEXT_PUBLIC_API_URL: https://ralph-app-api-test.azurewebsites.net
+
+      - name: Check build output
+        run: |
+          if [ -d ".next" ]; then
+            echo "Build successful - .next directory exists"
+            ls -la .next
+          else
+            echo "Build failed - .next directory not found"
+            exit 1
+          fi
+        working-directory: src/frontend
+
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Run npm audit
+        run: npm audit --audit-level=moderate
+        working-directory: src/frontend
+        continue-on-error: true
+
+      - name: Check for vulnerabilities
+        run: |
+          VULNERABILITIES=$(npm audit --json | jq '.metadata.vulnerabilities.moderate + .metadata.vulnerabilities.high + .metadata.vulnerabilities.critical')
+          echo "Found $VULNERABILITIES moderate/high/critical vulnerabilities"
+          if [ "$VULNERABILITIES" -gt 0 ]; then
+            echo "⚠️ Security vulnerabilities detected. Please review."
+          fi
+        working-directory: src/frontend
+        continue-on-error: true
