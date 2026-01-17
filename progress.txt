@@ -63,3 +63,28 @@ Allow users to generate and create 1-1000 random customers at once for testing a
   - All 172 tests passing (11 new tests for bulk endpoint covering valid requests, invalid counts, duplicate emails, partial failures, all failures, timestamp validation, and edge cases)
   - Repository pattern: new methods must be added to both interface and implementation
 ---
+
+## 2026-01-17 12:15 - US-003 API Client Bulk Create Method
+- Implemented API client method for calling the bulk create endpoint from the frontend
+- Added TypeScript types to support bulk operations:
+  - BulkCreateResponse: Type with successCount, failureCount, createdCustomers array, and errors array
+  - BulkCreateError: Type with index (number) and message (string)
+- Enhanced postWithErrorHandling method to support optional timeout parameter
+- Added timeout handling with AbortController for long-running requests
+- Created bulkCreateRandom(count: number) method in CustomerApiClient with:
+  - 30-second timeout for large batch operations
+  - Proper error handling with ApiError class
+  - Support for retry mechanism on transient errors
+  - Timeout errors converted to ApiError with 408 status code
+- Files created/modified:
+  - src/frontend/src/lib/api/types.ts (modified - added BulkCreateResponse and BulkCreateError types)
+  - src/frontend/src/lib/api/customerApi.ts (modified - enhanced postWithErrorHandling with timeout support, added bulkCreateRandom method)
+  - src/frontend/src/lib/api/customerApi.test.ts (modified - added 14 comprehensive tests for bulkCreateRandom covering success, timeouts, errors, retries, edge cases)
+- **Learnings for future iterations:**
+  - AbortController is the proper way to implement request timeouts in fetch API
+  - DOMException with name 'AbortError' indicates a timeout/abort occurred
+  - When adding signal parameter to fetch, existing tests need to be updated to use expect.objectContaining() instead of exact match
+  - Timeout parameter should be passed through retry attempts to maintain timeout behavior
+  - All 61 frontend API tests passing (14 new tests for bulkCreateRandom)
+  - customerApi.ts has 93.91% statement coverage, exceeding 80% requirement
+---
