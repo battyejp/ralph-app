@@ -34,3 +34,32 @@ Allow users to generate and create 1-1000 random customers at once for testing a
   - The backend API follows repository + service pattern with scoped DI registration
   - All 161 tests passing including 15 new tests for RandomCustomerGenerator
 ---
+
+## 2026-01-17 12:25 - US-002 Bulk Create Customers API Endpoint
+- Implemented POST /api/customers/bulk endpoint for creating multiple random customers in a single API call
+- Created DTOs for bulk operations:
+  - BulkCreateRequestDto: Request payload with count property (validated 1-1000)
+  - BulkCreateResponseDto: Response with successCount, failureCount, createdCustomers array, and errors array
+  - BulkCreateError: Individual error tracking with index and message
+- Added BulkCreateAsync method to ICustomerRepository and CustomerRepository using AddRange() for performance
+- Endpoint features:
+  - Validates count range (1-1000) and returns 400 Bad Request for invalid values
+  - Uses IRandomCustomerGenerator to create realistic customer data
+  - Checks for duplicate emails before insertion
+  - Partial success handling: commits successful customers even if some fail validation
+  - Returns detailed error information for failed customer creations
+- Files created/modified:
+  - src/backend/CustomerApi/DTOs/BulkCreateRequestDto.cs (new)
+  - src/backend/CustomerApi/DTOs/BulkCreateResponseDto.cs (new)
+  - src/backend/CustomerApi/DTOs/BulkCreateError.cs (new)
+  - src/backend/CustomerApi/Controllers/CustomersController.cs (modified - added BulkCreateCustomers endpoint and IRandomCustomerGenerator dependency)
+  - src/backend/CustomerApi/Repositories/ICustomerRepository.cs (modified - added BulkCreateAsync method)
+  - src/backend/CustomerApi/Repositories/CustomerRepository.cs (modified - implemented BulkCreateAsync)
+  - src/backend/CustomerApi.Tests/Controllers/CustomersControllerTests.cs (modified - added IRandomCustomerGenerator mock and 11 comprehensive bulk endpoint tests)
+- **Learnings for future iterations:**
+  - Entity Framework's AddRange() is the correct method for bulk inserts in .NET 10
+  - Bulk operations should handle partial failures gracefully by tracking errors with indexes
+  - When adding new dependencies to a controller, also update the test constructor to include mocks
+  - All 172 tests passing (11 new tests for bulk endpoint covering valid requests, invalid counts, duplicate emails, partial failures, all failures, timestamp validation, and edge cases)
+  - Repository pattern: new methods must be added to both interface and implementation
+---
