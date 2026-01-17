@@ -86,17 +86,25 @@ jobs:
         uses: azure/cli@v2
         with:
           inlineScript: |
-            # Check if App Service exists, create if not
             SLOT_NAME="${{ steps.env-name.outputs.env-name }}"
             APP_SERVICE="${{ env.APP_NAME }}-test"
 
-            # Try to create deployment slot (will fail silently if exists)
-            az webapp deployment slot create \
+            # Check if slot exists
+            SLOT_EXISTS=$(az webapp deployment slot list \
               --name $APP_SERVICE \
               --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
-              --slot $SLOT_NAME \
-              --configuration-source $APP_SERVICE \
-              2>/dev/null || echo "Slot already exists or using standalone app"
+              --query "[?name=='$SLOT_NAME'].name" -o tsv)
+
+            if [ -z "$SLOT_EXISTS" ]; then
+              echo "Creating deployment slot: $SLOT_NAME"
+              az webapp deployment slot create \
+                --name $APP_SERVICE \
+                --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+                --slot $SLOT_NAME \
+                --configuration-source $APP_SERVICE
+            else
+              echo "Slot $SLOT_NAME already exists"
+            fi
 
       - name: Deploy to Feature Environment
         uses: azure/webapps-deploy@v3
