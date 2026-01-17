@@ -88,3 +88,45 @@ Allow users to generate and create 1-1000 random customers at once for testing a
   - All 61 frontend API tests passing (14 new tests for bulkCreateRandom)
   - customerApi.ts has 93.91% statement coverage, exceeding 80% requirement
 ---
+## 2026-01-17 12:30 - US-004 Bulk Create Customer UI Dialog
+- Implemented GenerateCustomersDialog component for specifying how many random customers to create (1-1000)
+- Component features:
+  - Number input with min/max validation (1-1000)
+  - Validation triggers on blur event, errors clear when user starts typing
+  - Error messages for invalid values: empty, non-integer, <1, >1000
+  - Generate button disabled when input is invalid or while loading
+  - Cancel button to close dialog without action
+  - onSuccess callback prop to notify parent component of completion
+  - Loading state with "Creating X customers..." message
+  - API error handling with user-friendly error messages
+- Created comprehensive test suite with 36 tests covering:
+  - Dialog rendering and visibility
+  - Input validation for all edge cases (empty, non-numeric, non-integer, negative, out of range)
+  - Button states (disabled/enabled based on validation)
+  - Loading states and messages
+  - Successful generation with API response
+  - Failed generation with error handling
+  - Cancel button behavior
+  - Accessibility (aria attributes, roles, dialog title)
+  - Edge cases (minimum 1, maximum 1000, negative numbers)
+- Files created/modified:
+  - src/frontend/src/components/GenerateCustomersDialog.tsx (new)
+  - src/frontend/src/components/GenerateCustomersDialog.test.tsx (new - 36 tests)
+- **Learnings for future iterations:**
+  - When mocking modules with Jest, use partial mocks to preserve real classes/functions
+    - Pattern: `jest.mock('@/lib/api/customerApi', () => { const actual = jest.requireActual('@/lib/api/customerApi'); return { ...actual, customerApi: { method: jest.fn() } }; });`
+    - This preserves real classes like `ApiError` while mocking only the methods you need
+    - Full module mocks with `jest.mock('@/lib/api/customerApi')` will mock everything, including classes
+  - Number inputs in HTML ignore non-numeric text, resulting in empty string value
+    - Don't write tests expecting non-numeric text to appear in number input values
+    - Test for disabled button state instead when dealing with invalid input
+  - Validation patterns for form inputs:
+    - Trigger validation on blur event to avoid showing errors while user is typing
+    - Clear errors when user starts typing (onChange handler)
+    - Only show validation errors for non-empty inputs on blur
+    - Keep Generate button disabled based on real-time validation, don't wait for blur
+  - Use `findByText` instead of `getByText` + `waitFor` for async assertions - it's cleaner and handles the wait automatically
+  - All 289 frontend tests passing
+  - Frontend build successful with no TypeScript errors
+---
+
