@@ -97,6 +97,25 @@ jobs:
               echo "Slot $SLOT_NAME already exists"
             fi
 
+      - name: Configure CORS for feature frontend
+        uses: azure/cli@v2
+        with:
+          inlineScript: |
+            SLOT_NAME="${{ steps.env-name.outputs.env-name }}"
+            APP_SERVICE="${{ env.APP_NAME }}-test"
+            FRONTEND_URL="https://ralph-app-web-test-${SLOT_NAME}.azurewebsites.net"
+            
+            echo "Configuring CORS to allow: $FRONTEND_URL"
+            
+            # Set CORS allowed origins via app settings
+            az webapp config appsettings set \
+              --name $APP_SERVICE \
+              --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+              --slot $SLOT_NAME \
+              --settings \
+                "AllowedOrigins__0=http://localhost:3000" \
+                "AllowedOrigins__1=$FRONTEND_URL"
+
       - name: Deploy to Feature Environment
         uses: azure/webapps-deploy@v3
         with:
@@ -117,17 +136,24 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
+            const envName = '${{ steps.env-name.outputs.env-name }}';
+            const apiUrl = '${{ steps.deployment-url.outputs.url }}';
+            const frontendUrl = `https://ralph-app-web-test-${envName}.azurewebsites.net`;
             github.rest.issues.createComment({
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: `## Feature Environment Deployed
+              body: `## 🚀 Feature Backend Environment Deployed
 
               Your feature environment is ready:
 
-              **API URL:** ${{ steps.deployment-url.outputs.url }}
-              **Swagger:** ${{ steps.deployment-url.outputs.url }}/swagger
+              **Backend API URL:** ${apiUrl}
+              **Swagger:** ${apiUrl}/swagger
+              **Frontend URL:** ${frontendUrl}
+              **Environment:** ${envName}
 
+              CORS is configured to allow requests from the feature frontend.
+              
               This environment will be automatically cleaned up when the PR is closed.`
             })
 
