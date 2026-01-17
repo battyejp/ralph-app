@@ -18,7 +18,7 @@ import type { BulkCreateResponse } from '@/lib/api/types';
 interface GenerateCustomersDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSuccess?: (response: BulkCreateResponse) => void;
+  onSuccess?: (successCount: number, failureCount: number) => void;
 }
 
 /**
@@ -106,7 +106,7 @@ export function GenerateCustomersDialog({
 
       // Notify parent of success
       if (onSuccess) {
-        onSuccess(response);
+        onSuccess(response.successCount, response.failureCount);
       }
     } catch (err) {
       // Set error message

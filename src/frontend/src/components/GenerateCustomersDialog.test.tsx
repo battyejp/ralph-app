@@ -420,7 +420,7 @@ describe('GenerateCustomersDialog', () => {
       });
     });
 
-    it('should call onSuccess callback with response', async () => {
+    it('should call onSuccess callback with successCount and failureCount', async () => {
       const mockOnOpenChange = jest.fn();
       const mockOnSuccess = jest.fn();
       (customerApi.bulkCreateRandom as jest.Mock).mockResolvedValue(mockBulkCreateResponse);
@@ -443,7 +443,7 @@ describe('GenerateCustomersDialog', () => {
       });
 
       await waitFor(() => {
-        expect(mockOnSuccess).toHaveBeenCalledWith(mockBulkCreateResponse);
+        expect(mockOnSuccess).toHaveBeenCalledWith(10, 0);
       });
     });
 
@@ -542,7 +542,7 @@ describe('GenerateCustomersDialog', () => {
       });
 
       await waitFor(() => {
-        expect(mockOnSuccess).toHaveBeenCalledWith(mockPartialFailureResponse);
+        expect(mockOnSuccess).toHaveBeenCalledWith(8, 2);
         expect(mockOnOpenChange).toHaveBeenCalledWith(false);
       });
     });
