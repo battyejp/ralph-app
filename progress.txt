@@ -130,3 +130,30 @@ Allow users to generate and create 1-1000 random customers at once for testing a
   - Frontend build successful with no TypeScript errors
 ---
 
+## 2026-01-17 12:43 - US-005 Integrate Bulk Create Dialog into Customer List Page
+- Implemented integration of GenerateCustomersDialog into the customer list page (src/app/page.tsx)
+- Added "Generate Random Customers" button to page header with outline variant
+- Button positioned before "Create Customer" button in header actions area
+- Integrated dialog with success handling callback (handleBulkGenerateSuccess)
+- Toast notifications implemented:
+  - Success: "Successfully created X customers"
+  - Partial failure: "Created X customers. Y failed."
+  - Refresh failure: "Failed to Refresh List" with error details
+- Automatic customer list refresh after successful bulk generation (only if search was performed)
+- Dialog closes automatically on completion (success or partial success)
+- Files created/modified:
+  - src/frontend/src/app/page.tsx (modified - added GenerateCustomersDialog integration, button, state management, and success handler)
+  - src/frontend/src/app/page.test.tsx (new - 12 comprehensive integration tests covering button rendering, dialog opening, success/partial failure toasts, list refresh, and dialog state management)
+  - src/frontend/src/components/GenerateCustomersDialog.tsx (modified - changed onSuccess callback signature from BulkCreateResponse to (successCount, failureCount))
+  - src/frontend/src/components/GenerateCustomersDialog.test.tsx (modified - updated tests for new callback signature)
+- **Learnings for future iterations:**
+  - When text appears in multiple places (button + dialog title), use more specific selectors in tests (e.g., getByRole('heading') instead of getByText)
+  - Replace all string occurrences in tests using replace_all parameter when the same pattern appears multiple times
+  - Dialog component libraries (shadcn/ui) automatically handle close button rendering - no need to manually add
+  - Success callbacks should pass only the data needed by parent, not full response objects
+  - List refresh logic should check if search has been performed to avoid unnecessary API calls
+  - All 301 tests passing (12 new tests for page integration)
+  - Frontend build successful with no TypeScript errors
+  - Code coverage remains >80% across all files
+---
+
