@@ -157,3 +157,31 @@ Allow users to generate and create 1-1000 random customers at once for testing a
   - Code coverage remains >80% across all files
 ---
 
+
+## 2026-01-19 16:25 - US-001 Add updateCustomer method to API client
+- Implemented updateCustomer API client method for calling PUT /api/customers/{id} endpoint
+- Added UpdateCustomerDto type to types.ts matching backend DTO structure
+- Implemented putWithErrorHandling private method following same patterns as postWithErrorHandling
+- Created updateCustomer method that:
+  - Sends PUT request to /api/customers/{id}
+  - Returns Promise<Customer> on success
+  - Throws ApiError on validation (400), not found (404), or server errors
+  - Implements retry mechanism for transient errors (500+, network errors)
+  - Does not retry on 400 (validation) or 404 (not found) errors
+- Files created/modified:
+  - src/frontend/src/lib/api/types.ts (modified - added UpdateCustomerDto interface)
+  - src/frontend/src/lib/api/customerApi.ts (modified - added putWithErrorHandling and updateCustomer methods)
+  - src/frontend/src/lib/api/customerApi.test.ts (modified - added 11 comprehensive tests for updateCustomer)
+  - prd.json (modified - marked US-001 as passes: true)
+- **Learnings for future iterations:**
+  - Backend already has a working PUT /api/customers/{id} endpoint (UpdateCustomer action in CustomersController)
+  - Backend uses UpdateCustomerDto with same structure as CreateCustomerDto (Name, Email, Phone, Address)
+  - PUT endpoint preserves CreatedAt and updates UpdatedAt automatically
+  - Backend returns 404 when customer not found, 400 for validation errors
+  - When testing async retry logic with Jest fake timers, store jest.runAllTimersAsync() result separately and await it after expectations to avoid unhandled promise rejections
+  - Pattern: `const runTimers = jest.runAllTimersAsync(); await expect(promise).rejects...; await runTimers;`
+  - All 72 tests passing for customerApi.test.ts
+  - TypeScript compilation successful (no errors)
+  - ESLint check passed (no warnings or errors)
+  - customerApi.ts has 94.44% statement coverage, exceeding 80% requirement
+---
