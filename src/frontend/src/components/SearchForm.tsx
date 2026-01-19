@@ -76,11 +76,11 @@ export function SearchForm({ onSearch, isLoading = false, onValidationError }: S
   };
 
   return (
-    <div className="w-full max-w-4xl space-y-4 p-6 bg-card rounded-lg border shadow-sm">
+    <div className="w-full max-w-4xl space-y-4 p-6 md:p-8 bg-card rounded-2xl border border-border shadow-xl backdrop-blur-sm">
       <div className="space-y-2">
-        <h2 className="text-2xl font-bold">Customer Search</h2>
-        <p className="text-sm text-muted-foreground">
-          Search for customers by name, email, or phone number
+        <h2 className="text-2xl md:text-3xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">Search Customers</h2>
+        <p className="text-sm md:text-base text-muted-foreground">
+          Find customers by name, email, or phone number
         </p>
       </div>
 
@@ -136,11 +136,11 @@ export function SearchForm({ onSearch, isLoading = false, onValidationError }: S
       </div>
 
       {/* Action Buttons */}
-      <div className="flex flex-col sm:flex-row gap-2">
+      <div className="flex flex-col sm:flex-row gap-3 pt-2">
         <Button
           onClick={handleSearch}
           disabled={isLoading}
-          className="flex-1 sm:flex-none"
+          className="flex-1 sm:flex-none bg-gradient-to-r from-primary to-accent hover:opacity-90 transition-opacity font-semibold text-white shadow-lg"
         >
           {isLoading ? 'Searching...' : 'Search'}
         </Button>
@@ -148,7 +148,7 @@ export function SearchForm({ onSearch, isLoading = false, onValidationError }: S
           onClick={handleClear}
           variant="outline"
           disabled={isLoading}
-          className="flex-1 sm:flex-none"
+          className="flex-1 sm:flex-none border-2 hover:bg-secondary/50 font-medium"
         >
           Clear Filters
         </Button>
