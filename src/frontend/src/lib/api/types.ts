@@ -57,6 +57,16 @@ export interface CreateCustomerData {
 }
 
 /**
+ * Data for updating an existing customer
+ */
+export interface UpdateCustomerDto {
+  name: string;
+  email: string;
+  phone?: string;
+  address?: string;
+}
+
+/**
  * Error information for a single failed customer creation in bulk operation
  */
 export interface BulkCreateError {
