@@ -55,3 +55,21 @@ export interface CreateCustomerData {
   phone?: string;
   address?: string;
 }
+
+/**
+ * Error information for a single failed customer creation in bulk operation
+ */
+export interface BulkCreateError {
+  index: number;
+  message: string;
+}
+
+/**
+ * Response from bulk create operation
+ */
+export interface BulkCreateResponse {
+  successCount: number;
+  failureCount: number;
+  createdCustomers: Customer[];
+  errors: BulkCreateError[];
+}

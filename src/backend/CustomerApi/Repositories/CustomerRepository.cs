@@ -92,6 +92,12 @@ public class CustomerRepository : ICustomerRepository
         return customer;
     }
 
+    public async Task BulkCreateAsync(List<Customer> customers)
+    {
+        _context.Customers.AddRange(customers);
+        await _context.SaveChangesAsync();
+    }
+
     public async Task<Customer> UpdateAsync(Customer customer)
     {
         _context.Customers.Update(customer);

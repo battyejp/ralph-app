@@ -7,6 +7,7 @@ import CustomerResultsTable from '@/components/CustomerResultsTable';
 import { PaginationControls } from '@/components/PaginationControls';
 import { CustomerDetailsDialog } from '@/components/CustomerDetailsDialog';
 import { CreateCustomerDialog } from '@/components/CreateCustomerDialog';
+import { GenerateCustomersDialog } from '@/components/GenerateCustomersDialog';
 import { Button } from '@/components/ui/button';
 import { customerApi } from '@/lib/api/customerApi';
 import { ApiError } from '@/lib/api/customerApi';
@@ -42,6 +43,9 @@ function HomeContent() {
 
   // Create customer dialog state
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+
+  // Generate customers dialog state
+  const [isGenerateDialogOpen, setIsGenerateDialogOpen] = useState(false);
 
   // Initialize state from URL parameters
   useEffect(() => {
@@ -259,6 +263,50 @@ function HomeContent() {
     setIsDialogOpen(true);
   };
 
+  const handleBulkGenerateSuccess = async (successCount: number, failureCount: number) => {
+    // Show appropriate toast based on results
+    if (failureCount > 0) {
+      toast({
+        variant: 'default',
+        title: 'Bulk Creation Completed',
+        description: `Created ${successCount} customers. ${failureCount} failed.`,
+      });
+    } else {
+      toast({
+        variant: 'default',
+        title: 'Success',
+        description: `Successfully created ${successCount} customers`,
+      });
+    }
+
+    // Refresh the customer list if a search has been performed
+    if (hasSearched) {
+      const params = { ...searchFilters, page: currentPage, pageSize, sortBy, sortOrder };
+      setIsLoading(true);
+      setError(null);
+
+      try {
+        const response = await customerApi.searchCustomers(params);
+        setCustomers(response.items);
+        setTotalPages(response.totalPages);
+        setTotalCount(response.totalCount);
+      } catch (err) {
+        let errorMessage = 'An unexpected error occurred. Please try again.';
+        if (err instanceof ApiError) {
+          errorMessage = err.message;
+        }
+
+        toast({
+          variant: 'destructive',
+          title: 'Failed to Refresh List',
+          description: errorMessage,
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    }
+  };
+
   return (
     <main className="flex min-h-screen flex-col items-center p-6 md:p-12 lg:p-24">
       <div className="w-full max-w-6xl space-y-8">
@@ -269,9 +317,14 @@ function HomeContent() {
               Search for customers by name, email, or phone number
             </p>
           </div>
-          <Button onClick={() => setIsCreateDialogOpen(true)}>
-            Create Customer
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => setIsGenerateDialogOpen(true)}>
+              Generate Random Customers
+            </Button>
+            <Button onClick={() => setIsCreateDialogOpen(true)}>
+              Create Customer
+            </Button>
+          </div>
         </div>
 
         <SearchForm
@@ -316,6 +369,12 @@ function HomeContent() {
           open={isCreateDialogOpen}
           onOpenChange={setIsCreateDialogOpen}
           onCustomerCreated={handleCustomerCreated}
+        />
+
+        <GenerateCustomersDialog
+          open={isGenerateDialogOpen}
+          onOpenChange={setIsGenerateDialogOpen}
+          onSuccess={handleBulkGenerateSuccess}
         />
       </div>
     </main>

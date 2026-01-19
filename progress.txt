@@ -1,182 +1,159 @@
-# Progress Log - Customer Creation Feature
+# Progress Log - Bulk Random Customer Creation
+
+## Feature Overview
+Allow users to generate and create 1-1000 random customers at once for testing and demo purposes using a performant bulk API endpoint.
 
 ## Codebase Patterns
-
-- **Environment**: Node.js/npm not on host - all commands via `docker-compose exec frontend`
-- **Frontend Framework**: Next.js 14 with App Router (not Pages Router)
-- **UI Components**: shadcn/ui manually created in src/components/ui/
-- **API Client**: Singleton pattern in src/lib/api/customerApi.ts
-- **Testing**: Jest with >80% coverage requirement
-- **Suspense Required**: Components using useSearchParams() must be wrapped in Suspense
-- **Toast System**: useToast hook with 'default' and 'destructive' variants
-- **Responsive Pattern**: Both desktop and mobile views rendered, hidden/shown with Tailwind md: breakpoint
-- **Backend**: .NET 10 with EF Core 9.0, auto-migrations on startup
-
-- **Backend Testing**: Tests run via `docker run --rm -v "D:\code\Github\battyejp\ralph-app\src\backend:/src" -w //src mcr.microsoft.com/dotnet/sdk:10.0 dotnet test`
-- **Repository Pattern**: Use EmailExistsAsync for duplicate checks, EmailExistsAsync returns false for soft-deleted records
-
-- **Jest Fake Timers Pattern**: When testing async code with retries, use fake timers and set up the expectation before running timers:
-  ```typescript
-  const expectation = expect(resultPromise).rejects.toMatchObject({...});
-  await jest.runAllTimersAsync();
-  await expectation;
-  ```
+- See CLAUDE.md for comprehensive patterns and conventions
+- Backend: .NET 10 Web API with Entity Framework Core 9.0
+- Frontend: Next.js 14 with App Router, TypeScript, Tailwind CSS, shadcn/ui
+- All development/testing must be done inside Docker containers
 
 ---
 
-## 2026-01-16 - US-006
-- **What was implemented**: Created dedicated customer creation page at /customers/new
-- **Files created**:
-  - `src/frontend/src/app/customers/new/page.tsx` - Full page for customer creation with:
-    - Heading "Create New Customer" and description
-    - CustomerForm component for data entry
-    - "Back to Search" link with arrow button navigating to home
-    - Success flow that navigates to home with `?showCustomer=<id>` param
-    - Responsive layout matching existing patterns (p-6 md:p-12 lg:p-24)
-  - `src/frontend/src/app/customers/new/page.test.tsx` - 17 comprehensive tests covering:
-    - Page rendering (heading, description, back link, form)
-    - Page layout (main element, responsive padding, max-width)
-    - Form submission success (navigation with showCustomer param, toast)
-    - Form submission failure (no navigation on validation error or API error, error toast)
-    - Accessibility (heading hierarchy, form labels)
-    - Responsive design (padding classes, container width)
-- **Files changed**:
-  - `src/frontend/src/app/page.tsx` - Added:
-    - Reading `showCustomer` URL parameter from searchParams
-    - Opening CustomerDetailsDialog when showCustomer param present
-    - Cleaning up URL by calling router.replace('/') after showing dialog
-  - `src/frontend/src/components/CreateCustomerDialog.tsx` - Added:
-    - Import for next/link
-    - Link to /customers/new in dialog description ("Prefer a full page? Open full form")
-    - onClick handler to close dialog when link is clicked
-  - `src/frontend/src/components/CreateCustomerDialog.test.tsx` - Added:
-    - Test for link to dedicated page presence and href
-    - Test for dialog closing when link is clicked
-- **Learnings for future iterations**:
-  - Use URL params (e.g., `?showCustomer=<id>`) to pass state between pages after navigation
-  - Clean up URL params after consuming them with router.replace to keep URLs clean
-  - New pages in Next.js App Router: create directory under src/app/ with page.tsx
-  - Test file can live alongside page.tsx in the same directory
-  - Coverage: Page component 100%, CreateCustomerDialog 100%, 30 tests total
+## Iteration Log
 
+## 2026-01-17 12:01 - US-001 Random Customer Data Generator Service
+- Implemented IRandomCustomerGenerator service interface and RandomCustomerGenerator implementation
+- Service generates realistic random customer data with:
+  - Names from predefined first/last name lists (60 first names, 64 last names)
+  - Valid email addresses with random domains (10 domain options)
+  - Phone numbers in +1-XXX-XXX-XXXX format
+  - Complete addresses with street, city, state, postal code, and country
+- All generated emails are unique within a batch using index-based suffix when duplicates occur
+- Files created/modified:
+  - src/backend/CustomerApi/Services/IRandomCustomerGenerator.cs (new)
+  - src/backend/CustomerApi/Services/RandomCustomerGenerator.cs (new)
+  - src/backend/CustomerApi.Tests/Services/RandomCustomerGeneratorTests.cs (new)
+  - src/backend/CustomerApi/Program.cs (modified - registered service in DI)
+  - src/backend/Dockerfile.test (new - for running tests in Docker)
+- **Learnings for future iterations:**
+  - FluentAssertions 8.8.0 uses `BeGreaterThanOrEqualTo` and `BeLessThanOrEqualTo` (not `BeGreaterOrEqualTo` or `BeLessOrEqualTo`)
+  - Tests must be run in Docker SDK container, not the runtime container (backend service doesn't have dotnet SDK)
+  - Created Dockerfile.test for running tests: `docker build -t backend-tests -f src/backend/Dockerfile.test src/backend && docker run --rm backend-tests`
+  - The backend API follows repository + service pattern with scoped DI registration
+  - All 161 tests passing including 15 new tests for RandomCustomerGenerator
 ---
 
-## 2026-01-16 - US-005
-- **What was implemented**: Added Create Customer button and modal to search page
-- **Files created**:
-  - `src/frontend/src/components/CreateCustomerDialog.tsx` - Modal dialog component with:
-    - Dialog with title "Create New Customer" and description
-    - Contains CustomerForm component
-    - onCustomerCreated callback for success flow
-    - Closes on successful customer creation
-  - `src/frontend/src/components/CreateCustomerDialog.test.tsx` - 13 comprehensive tests covering:
-    - Dialog rendering (open/closed states, title, form fields, close button)
-    - Form submission success (dialog closes, callback called)
-    - Form submission failure (dialog stays open, validation errors, API errors)
-    - Accessibility (aria roles, dialog title)
-    - Desktop and mobile visibility
-    - Dialog state management (form reset on reopen)
-- **Files changed**:
-  - `src/frontend/src/app/page.tsx` - Added:
-    - Import for CreateCustomerDialog and Button components
-    - isCreateDialogOpen state
-    - handleCustomerCreated callback (opens CustomerDetailsDialog with new customer)
-    - "Create Customer" button in header with responsive flex layout
-    - CreateCustomerDialog component with props
-- **Learnings for future iterations**:
-  - Reuse existing Dialog and CustomerForm components for modals
-  - Use responsive flex layout (`flex-col sm:flex-row`) for header with button
-  - On success flow: close create dialog, then open details dialog with new customer ID
-  - Test component in isolation using fireEvent (no userEvent package installed)
-  - Use `act()` wrapper for async state updates in tests
-  - CreateCustomerDialog coverage: 100% statements, branches, functions, lines
-
+## 2026-01-17 12:25 - US-002 Bulk Create Customers API Endpoint
+- Implemented POST /api/customers/bulk endpoint for creating multiple random customers in a single API call
+- Created DTOs for bulk operations:
+  - BulkCreateRequestDto: Request payload with count property (validated 1-1000)
+  - BulkCreateResponseDto: Response with successCount, failureCount, createdCustomers array, and errors array
+  - BulkCreateError: Individual error tracking with index and message
+- Added BulkCreateAsync method to ICustomerRepository and CustomerRepository using AddRange() for performance
+- Endpoint features:
+  - Validates count range (1-1000) and returns 400 Bad Request for invalid values
+  - Uses IRandomCustomerGenerator to create realistic customer data
+  - Checks for duplicate emails before insertion
+  - Partial success handling: commits successful customers even if some fail validation
+  - Returns detailed error information for failed customer creations
+- Files created/modified:
+  - src/backend/CustomerApi/DTOs/BulkCreateRequestDto.cs (new)
+  - src/backend/CustomerApi/DTOs/BulkCreateResponseDto.cs (new)
+  - src/backend/CustomerApi/DTOs/BulkCreateError.cs (new)
+  - src/backend/CustomerApi/Controllers/CustomersController.cs (modified - added BulkCreateCustomers endpoint and IRandomCustomerGenerator dependency)
+  - src/backend/CustomerApi/Repositories/ICustomerRepository.cs (modified - added BulkCreateAsync method)
+  - src/backend/CustomerApi/Repositories/CustomerRepository.cs (modified - implemented BulkCreateAsync)
+  - src/backend/CustomerApi.Tests/Controllers/CustomersControllerTests.cs (modified - added IRandomCustomerGenerator mock and 11 comprehensive bulk endpoint tests)
+- **Learnings for future iterations:**
+  - Entity Framework's AddRange() is the correct method for bulk inserts in .NET 10
+  - Bulk operations should handle partial failures gracefully by tracking errors with indexes
+  - When adding new dependencies to a controller, also update the test constructor to include mocks
+  - All 172 tests passing (11 new tests for bulk endpoint covering valid requests, invalid counts, duplicate emails, partial failures, all failures, timestamp validation, and edge cases)
+  - Repository pattern: new methods must be added to both interface and implementation
 ---
 
-## 2026-01-16 - US-004
-- **What was implemented**: Added toast notifications to CustomerForm component
-- **Files changed**:
-  - `src/frontend/src/components/CustomerForm.tsx` - Added:
-    - Import for useToast hook
-    - Toast state initialization with `const { toast } = useToast()`
-    - Success toast on customer creation with title "Customer created successfully"
-    - Error toast with destructive variant for all error scenarios
-  - `src/frontend/src/components/CustomerForm.test.tsx` - Added:
-    - Mock for useToast hook
-    - 6 new tests in "Toast Notifications" describe block
-    - Tests verify success toast, validation error toast, duplicate email toast, unknown error toast, toast with inline errors, and destructive variant usage
-- **Learnings for future iterations**:
-  - Mock useToast hook with jest.mock returning a mockToast function
-  - Clear mockToast in beforeEach along with other mocks
-  - Toast hook returns `{ toast, toasts, dismiss }` - only need to mock `toast` function for form tests
-  - Toast accepts `title`, `description`, and `variant` props; use `variant: 'destructive'` for errors
-  - Browser verification of toasts requires component integration into a page (deferred to US-005/US-006)
-  - Coverage: 97% statements, 80% branches, 90.47% functions, 96.8% lines
-
+## 2026-01-17 12:15 - US-003 API Client Bulk Create Method
+- Implemented API client method for calling the bulk create endpoint from the frontend
+- Added TypeScript types to support bulk operations:
+  - BulkCreateResponse: Type with successCount, failureCount, createdCustomers array, and errors array
+  - BulkCreateError: Type with index (number) and message (string)
+- Enhanced postWithErrorHandling method to support optional timeout parameter
+- Added timeout handling with AbortController for long-running requests
+- Created bulkCreateRandom(count: number) method in CustomerApiClient with:
+  - 30-second timeout for large batch operations
+  - Proper error handling with ApiError class
+  - Support for retry mechanism on transient errors
+  - Timeout errors converted to ApiError with 408 status code
+- Files created/modified:
+  - src/frontend/src/lib/api/types.ts (modified - added BulkCreateResponse and BulkCreateError types)
+  - src/frontend/src/lib/api/customerApi.ts (modified - enhanced postWithErrorHandling with timeout support, added bulkCreateRandom method)
+  - src/frontend/src/lib/api/customerApi.test.ts (modified - added 14 comprehensive tests for bulkCreateRandom covering success, timeouts, errors, retries, edge cases)
+- **Learnings for future iterations:**
+  - AbortController is the proper way to implement request timeouts in fetch API
+  - DOMException with name 'AbortError' indicates a timeout/abort occurred
+  - When adding signal parameter to fetch, existing tests need to be updated to use expect.objectContaining() instead of exact match
+  - Timeout parameter should be passed through retry attempts to maintain timeout behavior
+  - All 61 frontend API tests passing (14 new tests for bulkCreateRandom)
+  - customerApi.ts has 93.91% statement coverage, exceeding 80% requirement
+---
+## 2026-01-17 12:30 - US-004 Bulk Create Customer UI Dialog
+- Implemented GenerateCustomersDialog component for specifying how many random customers to create (1-1000)
+- Component features:
+  - Number input with min/max validation (1-1000)
+  - Validation triggers on blur event, errors clear when user starts typing
+  - Error messages for invalid values: empty, non-integer, <1, >1000
+  - Generate button disabled when input is invalid or while loading
+  - Cancel button to close dialog without action
+  - onSuccess callback prop to notify parent component of completion
+  - Loading state with "Creating X customers..." message
+  - API error handling with user-friendly error messages
+- Created comprehensive test suite with 36 tests covering:
+  - Dialog rendering and visibility
+  - Input validation for all edge cases (empty, non-numeric, non-integer, negative, out of range)
+  - Button states (disabled/enabled based on validation)
+  - Loading states and messages
+  - Successful generation with API response
+  - Failed generation with error handling
+  - Cancel button behavior
+  - Accessibility (aria attributes, roles, dialog title)
+  - Edge cases (minimum 1, maximum 1000, negative numbers)
+- Files created/modified:
+  - src/frontend/src/components/GenerateCustomersDialog.tsx (new)
+  - src/frontend/src/components/GenerateCustomersDialog.test.tsx (new - 36 tests)
+- **Learnings for future iterations:**
+  - When mocking modules with Jest, use partial mocks to preserve real classes/functions
+    - Pattern: `jest.mock('@/lib/api/customerApi', () => { const actual = jest.requireActual('@/lib/api/customerApi'); return { ...actual, customerApi: { method: jest.fn() } }; });`
+    - This preserves real classes like `ApiError` while mocking only the methods you need
+    - Full module mocks with `jest.mock('@/lib/api/customerApi')` will mock everything, including classes
+  - Number inputs in HTML ignore non-numeric text, resulting in empty string value
+    - Don't write tests expecting non-numeric text to appear in number input values
+    - Test for disabled button state instead when dealing with invalid input
+  - Validation patterns for form inputs:
+    - Trigger validation on blur event to avoid showing errors while user is typing
+    - Clear errors when user starts typing (onChange handler)
+    - Only show validation errors for non-empty inputs on blur
+    - Keep Generate button disabled based on real-time validation, don't wait for blur
+  - Use `findByText` instead of `getByText` + `waitFor` for async assertions - it's cleaner and handles the wait automatically
+  - All 289 frontend tests passing
+  - Frontend build successful with no TypeScript errors
 ---
 
-## 2026-01-16 - US-003
-- **What was implemented**: Created CustomerForm component with comprehensive validation
-- **Files created**:
-  - `src/frontend/src/components/CustomerForm.tsx` - Form component with:
-    - Name (required) and Email (required) fields with client-side validation
-    - Phone and Address optional fields
-    - Inline error messages with red text styling
-    - Client-side validation on blur and submit
-    - Server-side validation error display
-    - Loading/disabled state during API call
-    - onSuccess callback prop
-    - Responsive stacked layout
-    - Full accessibility (aria-invalid, aria-describedby, role="alert")
-  - `src/frontend/src/components/CustomerForm.test.tsx` - 37 comprehensive tests covering:
-    - Rendering (fields, buttons, placeholders, required markers)
-    - User input for all fields
-    - Client-side validation (blur, submit, error clearing)
-    - Form submission (with/without optional fields, trimming, callback)
-    - Loading state (button disabled, inputs disabled, text changes)
-    - Server-side error handling (field errors, duplicate email, generic errors)
-    - Accessibility (aria attributes, alert roles)
-    - Responsive design
-    - Edge cases (empty optionals, whitespace handling)
-- **Learnings for future iterations**:
-  - Use `touched` state pattern to show errors only after field interaction
-  - Email validation regex: `/^[^\s@]+@[^\s@]+\.[^\s@]+$/`
-  - Server errors come with field names in PascalCase (e.g., "Name", "Email") - convert to lowercase for matching
-  - For non-field-specific API errors (like 409 duplicate), display in email field as fallback
-  - Mock ApiError class in tests when mocking customerApi module
-  - Component is ready for integration in US-005 (modal) and US-006 (dedicated page)
-  - Coverage: 96.8% statements, 80% branches, 90.47% functions, 96.59% lines
-
----
-
-## 2026-01-16 - US-002
-- **What was implemented**: Added createCustomer method to frontend API client
-- **Files changed**:
-  - `src/frontend/src/lib/api/types.ts` - Added CreateCustomerData interface
-  - `src/frontend/src/lib/api/customerApi.ts` - Added createCustomer method and postWithErrorHandling helper, added 409 handling to getUserFriendlyErrorMessage
-  - `src/frontend/src/lib/api/customerApi.test.ts` - Added 15 comprehensive tests for createCustomer
-- **Learnings for future iterations**:
-  - POST requests need a separate helper method (postWithErrorHandling) similar to fetchWithErrorHandling for GET
-  - 409 Conflict should be handled with user-friendly message and non-retryable flag
-  - When testing retryable errors, must use Jest fake timers to avoid timeout issues
-  - Pre-existing tests without fake timers may timeout - this is a known issue to fix in future
-  - Coverage for new code is more important than overall coverage when other components have pre-existing gaps
-
----
-
-## 2026-01-16 - US-001
-- **What was implemented**: Added duplicate email handling to CreateCustomer endpoint
-- **Files changed**:
-  - `src/backend/CustomerApi/Repositories/ICustomerRepository.cs` - Added EmailExistsAsync method signature
-  - `src/backend/CustomerApi/Repositories/CustomerRepository.cs` - Implemented EmailExistsAsync method
-  - `src/backend/CustomerApi/Controllers/CustomersController.cs` - Added duplicate email check returning 409 Conflict
-  - `src/backend/CustomerApi.Tests/Repositories/CustomerRepositoryTests.cs` - Added EmailExistsAsync tests
-  - `src/backend/CustomerApi.Tests/Controllers/CustomersControllerTests.cs` - Added duplicate email tests, updated existing tests
-- **Learnings for future iterations**:
-  - Backend runtime container doesn't have SDK - use separate docker run with SDK image for build/test
-  - EmailExistsAsync uses `!c.IsDeleted` filter to allow reusing emails from soft-deleted customers
-  - All existing CreateCustomer tests needed EmailExistsAsync mock setup after adding the check
-  - 409 Conflict is the correct HTTP status for duplicate resource creation attempts
-
+## 2026-01-17 12:43 - US-005 Integrate Bulk Create Dialog into Customer List Page
+- Implemented integration of GenerateCustomersDialog into the customer list page (src/app/page.tsx)
+- Added "Generate Random Customers" button to page header with outline variant
+- Button positioned before "Create Customer" button in header actions area
+- Integrated dialog with success handling callback (handleBulkGenerateSuccess)
+- Toast notifications implemented:
+  - Success: "Successfully created X customers"
+  - Partial failure: "Created X customers. Y failed."
+  - Refresh failure: "Failed to Refresh List" with error details
+- Automatic customer list refresh after successful bulk generation (only if search was performed)
+- Dialog closes automatically on completion (success or partial success)
+- Files created/modified:
+  - src/frontend/src/app/page.tsx (modified - added GenerateCustomersDialog integration, button, state management, and success handler)
+  - src/frontend/src/app/page.test.tsx (new - 12 comprehensive integration tests covering button rendering, dialog opening, success/partial failure toasts, list refresh, and dialog state management)
+  - src/frontend/src/components/GenerateCustomersDialog.tsx (modified - changed onSuccess callback signature from BulkCreateResponse to (successCount, failureCount))
+  - src/frontend/src/components/GenerateCustomersDialog.test.tsx (modified - updated tests for new callback signature)
+- **Learnings for future iterations:**
+  - When text appears in multiple places (button + dialog title), use more specific selectors in tests (e.g., getByRole('heading') instead of getByText)
+  - Replace all string occurrences in tests using replace_all parameter when the same pattern appears multiple times
+  - Dialog component libraries (shadcn/ui) automatically handle close button rendering - no need to manually add
+  - Success callbacks should pass only the data needed by parent, not full response objects
+  - List refresh logic should check if search has been performed to avoid unnecessary API calls
+  - All 301 tests passing (12 new tests for page integration)
+  - Frontend build successful with no TypeScript errors
+  - Code coverage remains >80% across all files
 ---
 

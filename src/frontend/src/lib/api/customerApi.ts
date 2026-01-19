@@ -1,4 +1,4 @@
-import type { Customer, PaginatedResponse, CustomerSearchParams, CreateCustomerData } from './types';
+import type { Customer, PaginatedResponse, CustomerSearchParams, CreateCustomerData, BulkCreateResponse } from './types';
 
 /**
  * Custom error class for API-related errors
@@ -160,16 +160,25 @@ class CustomerApiClient {
   private async postWithErrorHandling<T>(
     url: string,
     data: unknown,
-    retryCount: number = 0
+    retryCount: number = 0,
+    timeoutMs?: number
   ): Promise<T> {
     try {
+      const controller = new AbortController();
+      const timeoutId = timeoutMs ? setTimeout(() => controller.abort(), timeoutMs) : undefined;
+
       const response = await fetch(url, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(data),
+        signal: controller.signal,
       });
+
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
 
       if (!response.ok) {
         // Try to parse error response
@@ -210,12 +219,22 @@ class CustomerApiClient {
         throw error;
       }
 
+      // Handle abort errors (timeout)
+      if (error instanceof DOMException && error.name === 'AbortError') {
+        throw new ApiError(
+          'Request timeout: The operation took too long to complete. Please try again.',
+          408,
+          undefined,
+          true
+        );
+      }
+
       if (error instanceof TypeError) {
         // Network errors are retryable
         if (retryCount < this.maxRetries) {
           const delayMs = this.retryDelay * Math.pow(2, retryCount);
           await this.delay(delayMs);
-          return this.postWithErrorHandling<T>(url, data, retryCount + 1);
+          return this.postWithErrorHandling<T>(url, data, retryCount + 1, timeoutMs);
         }
 
         throw new ApiError(
@@ -294,6 +313,18 @@ class CustomerApiClient {
   async createCustomer(data: CreateCustomerData): Promise<Customer> {
     const url = `${this.baseUrl}/api/customers`;
     return this.postWithErrorHandling<Customer>(url, data);
+  }
+
+  /**
+   * Bulk create random customers
+   * @param count - The number of random customers to create (1-1000)
+   * @returns The bulk create response with success/failure counts and created customers
+   * @throws ApiError with status 400 if count is invalid (<1 or >1000)
+   */
+  async bulkCreateRandom(count: number): Promise<BulkCreateResponse> {
+    const url = `${this.baseUrl}/api/customers/bulk`;
+    const timeoutMs = 30000; // 30 seconds timeout for large batches
+    return this.postWithErrorHandling<BulkCreateResponse>(url, { count }, 0, timeoutMs);
   }
 }
 

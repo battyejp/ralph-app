@@ -1,17 +1,21 @@
 {
   "project": "Customer Search Application",
-  "branchName": "ralph/customer-creation",
-  "description": "Customer Creation via Web UI - Enable users to create new customers through the web interface with form validation, toast notifications, and multiple entry points (modal and dedicated page)",
+  "branchName": "ralph/bulk-random-customer-creation",
+  "description": "Bulk Random Customer Creation - Allow users to generate and create 1-1000 random customers at once for testing and demo purposes using a performant bulk API endpoint",
   "userStories": [
     {
       "id": "US-001",
-      "title": "Add duplicate email handling to backend CreateCustomer endpoint",
-      "description": "As a developer, I need the backend to return 409 Conflict when attempting to create a customer with an existing email so the frontend can display appropriate error messages.",
+      "title": "Random Customer Data Generator Service",
+      "description": "As a developer, I need a service that generates realistic random customer data so that the bulk endpoint can create varied test data.",
       "acceptanceCriteria": [
-        "CreateCustomer endpoint checks if email already exists before creating",
-        "Returns 409 Conflict with message 'A customer with this email already exists' if duplicate",
-        "Add ICustomerRepository.EmailExistsAsync(string email) method",
-        "Add unit tests for duplicate email scenario",
+        "IRandomCustomerGenerator service interface created in Services folder",
+        "RandomCustomerGenerator implementation generates realistic random names (first + last name combinations from predefined lists)",
+        "Generates valid random email addresses based on generated name with random domain",
+        "Generates random phone numbers in valid format (e.g., +1-XXX-XXX-XXXX)",
+        "Generates random addresses with street, city, state/region, postal code, and country",
+        "GenerateCustomers(int count) method returns list of CreateCustomerDto objects",
+        "All generated emails are unique within a batch (append index or random suffix if needed)",
+        "Service is registered as scoped service in DI container in Program.cs",
         "Code builds successfully",
         "All tests pass with code coverage greater than 80%"
       ],
@@ -21,103 +25,84 @@
     },
     {
       "id": "US-002",
-      "title": "Add createCustomer method to frontend API client",
-      "description": "As a developer, I need a frontend API method to create customers so the UI can communicate with the backend.",
+      "title": "Bulk Create Customers API Endpoint",
+      "description": "As a developer, I need a bulk create endpoint so that the frontend can create many customers in a single API call.",
       "acceptanceCriteria": [
-        "Add CreateCustomerData type to types.ts with fields: name (string), email (string), phone (string optional), address (string optional)",
-        "Add createCustomer(data: CreateCustomerData) method to CustomerApiClient class",
-        "Method sends POST request to /api/customers with JSON body",
-        "Returns the created Customer object on success",
-        "Handles validation errors (400) and extracts field-level error messages into ApiError.errors",
-        "Handles duplicate email error (409) with user-friendly message",
-        "Add comprehensive unit tests for createCustomer method",
+        "POST /api/customers/bulk endpoint added to CustomersController",
+        "Endpoint accepts a BulkCreateRequestDto with 'count' property (int)",
+        "Endpoint uses IRandomCustomerGenerator to generate customer data",
+        "Returns 400 Bad Request if count exceeds 1000 or is less than 1",
+        "BulkCreateResponseDto includes: successCount (int), failureCount (int), createdCustomers (array of CustomerResponseDto), errors (array of BulkCreateError with index and message)",
+        "Successfully created customers are committed even if some fail validation",
+        "Uses Entity Framework AddRange() for batch insert performance",
+        "Endpoint documented in Swagger with appropriate attributes",
         "Code builds successfully",
         "All tests pass with code coverage greater than 80%"
       ],
       "priority": 2,
       "passes": true,
-      "notes": "API client coverage: 94.28% statements, 95.09% lines, 85.71% branches, 100% functions. Pre-existing test timeouts in other tests unrelated to createCustomer."
+      "notes": ""
     },
     {
       "id": "US-003",
-      "title": "Create CustomerForm component with validation",
-      "description": "As a user, I want a form to enter customer details with inline validation so I can create new customers and see errors clearly.",
+      "title": "API Client Bulk Create Method",
+      "description": "As a frontend developer, I need an API client method to call the bulk create endpoint so that UI components can trigger bulk creation.",
       "acceptanceCriteria": [
-        "Create CustomerForm.tsx component in src/components/",
-        "Form has fields: Name (required), Email (required), Phone (optional), Address (optional)",
-        "Use existing shadcn/ui components (Input, Label, Button)",
-        "Display inline error messages beneath each invalid field with red text",
-        "Show client-side validation on blur and submit (required fields, email format)",
-        "Show server-side validation errors after failed submission",
-        "Errors clear when user corrects the field",
-        "Submit button shows loading/disabled state during API call",
-        "Form accepts onSuccess callback prop for post-submission handling",
-        "Form is responsive (stacked layout)",
-        "Add comprehensive unit tests for CustomerForm",
+        "BulkCreateResponse type defined in lib/api/types.ts with successCount, failureCount, createdCustomers, and errors",
+        "BulkCreateError type defined with index (number) and message (string)",
+        "customerApi.bulkCreateRandom(count: number) method added to CustomerApiClient",
+        "Method calls POST /api/customers/bulk with { count } body",
+        "Method has extended timeout (30 seconds) for large batches",
+        "Returns typed BulkCreateResponse on success",
+        "Handles API errors appropriately with ApiError class",
         "Code builds successfully",
-        "All tests pass with code coverage greater than 80%",
-        "Verify in browser using dev-browser skill"
+        "All tests pass with code coverage greater than 80%"
       ],
       "priority": 3,
       "passes": true,
-      "notes": "Component coverage: 96.8% statements, 80% branches, 90.47% functions, 96.59% lines. 37 passing tests. Browser verification requires integration (US-005/US-006) - verified via comprehensive unit tests covering all UI states and interactions."
+      "notes": ""
     },
     {
       "id": "US-004",
-      "title": "Add toast notifications to CustomerForm",
-      "description": "As a user, I want toast notifications for form submission results so I have clear feedback on success or failure.",
+      "title": "Bulk Create Customer UI Dialog",
+      "description": "As a user, I want a UI control to specify how many random customers to create so that I can quickly populate the database for testing.",
       "acceptanceCriteria": [
-        "Show success toast when customer is created: 'Customer created successfully'",
-        "Show error toast on submission failure with summary message",
-        "Use existing useToast hook and destructive variant for errors",
-        "Toast appears in addition to inline validation errors",
-        "Update CustomerForm tests to verify toast behavior",
+        "GenerateCustomersDialog component created in src/components/GenerateCustomersDialog.tsx",
+        "Dialog uses existing shadcn/ui Dialog, Input, Button, and Label components",
+        "Dialog contains number input for customer count with min=1 and max=1000",
+        "Input validates range and shows error message for invalid values (empty, <1, >1000, non-integer)",
+        "Generate button is disabled when input is invalid or while loading",
+        "Dialog has Cancel button to close without action",
+        "Dialog accepts onSuccess callback prop to notify parent of completion",
         "Code builds successfully",
         "All tests pass with code coverage greater than 80%",
         "Verify in browser using dev-browser skill"
       ],
       "priority": 4,
       "passes": true,
-      "notes": "Component coverage: 97% statements, 80% branches, 90.47% functions, 96.8% lines. 43 passing tests including 6 toast-specific tests. Browser verification requires integration (US-005/US-006)."
+      "notes": ""
     },
     {
       "id": "US-005",
-      "title": "Add Create Customer button and modal to search page",
-      "description": "As a user, I want a 'Create Customer' button on the search page so I can quickly add new customers without leaving the page.",
+      "title": "Integrate Bulk Create Dialog into Customer List Page",
+      "description": "As a user, I want to access the bulk create feature from the customer list page so that I can quickly generate test data.",
       "acceptanceCriteria": [
-        "Add 'Create Customer' button in search page header area",
-        "Button opens a Dialog modal containing the CustomerForm",
-        "Modal has title: 'Create New Customer'",
-        "Modal can be closed via X button or clicking outside",
-        "On successful creation, modal closes and opens CustomerDetailsDialog showing new customer",
-        "Button is visible on both desktop and mobile layouts",
-        "Add unit tests for CreateCustomerDialog component",
+        "Generate Random Customers button added to customer list page header/actions area",
+        "Button uses outline variant to differentiate from primary actions",
+        "Clicking button opens the GenerateCustomersDialog",
+        "Loading state shown in dialog while bulk creation is in progress with 'Creating X customers...' message",
+        "Success toast shows count of successfully created customers (e.g., 'Successfully created 100 customers')",
+        "If partial failure, toast shows both success and failure counts (e.g., 'Created 95 customers. 5 failed.')",
+        "Error toast shown if entire operation fails",
+        "Customer list refreshes automatically after successful creation",
+        "Dialog closes automatically on completion (success or partial success)",
         "Code builds successfully",
         "All tests pass with code coverage greater than 80%",
         "Verify in browser using dev-browser skill"
       ],
       "priority": 5,
       "passes": true,
-      "notes": "CreateCustomerDialog component: 100% coverage. 13 passing tests. Button visible on desktop and mobile with responsive flex layout. Success flow opens CustomerDetailsDialog with new customer."
-    },
-    {
-      "id": "US-006",
-      "title": "Create dedicated customer creation page",
-      "description": "As a user, I want a dedicated page for creating customers so I have a full-screen experience when needed.",
-      "acceptanceCriteria": [
-        "Create new page at /customers/new using Next.js App Router",
-        "Page contains CustomerForm component with heading 'Create New Customer'",
-        "Include 'Back to Search' link/button for navigation to home",
-        "On successful creation, navigate to home and open CustomerDetailsDialog for new customer",
-        "Page is responsive and follows existing layout patterns",
-        "Add link to dedicated page from search page (e.g., in Create Customer modal or as secondary option)",
-        "Code builds successfully",
-        "All tests pass with code coverage greater than 80%",
-        "Verify in browser using dev-browser skill"
-      ],
-      "priority": 6,
-      "passes": true,
-      "notes": "Page component coverage: 100%. CreateCustomerDialog coverage: 100%. 30 passing tests total. Link to dedicated page added to CreateCustomerDialog modal description."
+      "notes": ""
     }
   ]
 }

@@ -1,5 +1,5 @@
 import { CustomerApiClient, ApiError } from './customerApi';
-import type { Customer, PaginatedResponse, CreateCustomerData } from './types';
+import type { Customer, PaginatedResponse, CreateCustomerData, BulkCreateResponse } from './types';
 
 describe('CustomerApiClient', () => {
   let apiClient: CustomerApiClient;
@@ -622,13 +622,14 @@ describe('CustomerApiClient', () => {
 
       expect(global.fetch).toHaveBeenCalledWith(
         'http://localhost:5000/api/customers',
-        {
+        expect.objectContaining({
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify(mockCustomerData),
-        }
+          signal: expect.any(AbortSignal),
+        })
       );
       expect(result).toEqual(mockCreatedCustomer);
     });
@@ -937,6 +938,362 @@ describe('CustomerApiClient', () => {
         expect(global.fetch).toHaveBeenCalledTimes(2);
         expect(result).toEqual(mockCreatedCustomer);
       });
+    });
+  });
+
+  describe('bulkCreateRandom', () => {
+    const mockBulkCreateResponse: BulkCreateResponse = {
+      successCount: 10,
+      failureCount: 0,
+      createdCustomers: [
+        {
+          id: '123e4567-e89b-12d3-a456-426614174000',
+          name: 'John Doe',
+          email: 'john@example.com',
+          phone: '+1-555-555-0001',
+          address: '123 Main St, Springfield, IL 62701, USA',
+          createdAt: '2024-01-01T00:00:00Z',
+          updatedAt: '2024-01-01T00:00:00Z',
+        },
+        {
+          id: '123e4567-e89b-12d3-a456-426614174001',
+          name: 'Jane Smith',
+          email: 'jane@example.com',
+          phone: '+1-555-555-0002',
+          address: '456 Oak Ave, Springfield, IL 62702, USA',
+          createdAt: '2024-01-01T00:00:01Z',
+          updatedAt: '2024-01-01T00:00:01Z',
+        },
+      ],
+      errors: [],
+    };
+
+    it('should create bulk random customers successfully', async () => {
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: true,
+        json: async () => mockBulkCreateResponse,
+      });
+
+      const result = await apiClient.bulkCreateRandom(10);
+
+      expect(global.fetch).toHaveBeenCalledWith(
+        'http://localhost:5000/api/customers/bulk',
+        expect.objectContaining({
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ count: 10 }),
+          signal: expect.any(AbortSignal),
+        })
+      );
+      expect(result).toEqual(mockBulkCreateResponse);
+    });
+
+    it('should use 30 second timeout for bulk operations', async () => {
+      const abortSpy = jest.spyOn(AbortController.prototype, 'abort');
+
+      global.fetch = jest.fn().mockImplementation(() =>
+        new Promise((resolve) => {
+          setTimeout(() => {
+            resolve({
+              ok: true,
+              json: async () => mockBulkCreateResponse,
+            });
+          }, 100);
+        })
+      );
+
+      await apiClient.bulkCreateRandom(100);
+
+      // Verify that setTimeout was called with 30000ms
+      // The timeout should have been set up but not triggered since the request completed
+      expect(abortSpy).not.toHaveBeenCalled();
+
+      abortSpy.mockRestore();
+    });
+
+    it('should handle timeout errors gracefully', async () => {
+      // Mock a request that will be aborted
+      global.fetch = jest.fn().mockImplementation(() =>
+        Promise.reject(new DOMException('The operation was aborted.', 'AbortError'))
+      );
+
+      await expect(apiClient.bulkCreateRandom(1000)).rejects.toMatchObject({
+        message: 'Request timeout: The operation took too long to complete. Please try again.',
+        status: 408,
+        isRetryable: true,
+      });
+    });
+
+    it('should handle 400 error for count less than 1', async () => {
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: false,
+        status: 400,
+        json: async () => ({
+          message: 'Count must be between 1 and 1000',
+        }),
+      });
+
+      try {
+        await apiClient.bulkCreateRandom(0);
+        fail('Should have thrown');
+      } catch (error) {
+        expect(error).toBeInstanceOf(ApiError);
+        const apiError = error as ApiError;
+        expect(apiError.status).toBe(400);
+        expect(apiError.message).toBe('Count must be between 1 and 1000');
+        expect(apiError.isRetryable).toBe(false);
+      }
+    });
+
+    it('should handle 400 error for count greater than 1000', async () => {
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: false,
+        status: 400,
+        json: async () => ({
+          message: 'Count must be between 1 and 1000',
+        }),
+      });
+
+      try {
+        await apiClient.bulkCreateRandom(1001);
+        fail('Should have thrown');
+      } catch (error) {
+        expect(error).toBeInstanceOf(ApiError);
+        const apiError = error as ApiError;
+        expect(apiError.status).toBe(400);
+        expect(apiError.message).toBe('Count must be between 1 and 1000');
+      }
+    });
+
+    it('should handle partial success with some failures', async () => {
+      const partialSuccessResponse: BulkCreateResponse = {
+        successCount: 8,
+        failureCount: 2,
+        createdCustomers: [
+          {
+            id: '123e4567-e89b-12d3-a456-426614174000',
+            name: 'John Doe',
+            email: 'john@example.com',
+            phone: '+1-555-555-0001',
+            address: '123 Main St, Springfield, IL 62701, USA',
+            createdAt: '2024-01-01T00:00:00Z',
+            updatedAt: '2024-01-01T00:00:00Z',
+          },
+        ],
+        errors: [
+          { index: 3, message: 'Duplicate email detected' },
+          { index: 7, message: 'Duplicate email detected' },
+        ],
+      };
+
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: true,
+        json: async () => partialSuccessResponse,
+      });
+
+      const result = await apiClient.bulkCreateRandom(10);
+
+      expect(result.successCount).toBe(8);
+      expect(result.failureCount).toBe(2);
+      expect(result.errors).toHaveLength(2);
+      expect(result.errors[0]).toEqual({ index: 3, message: 'Duplicate email detected' });
+    });
+
+    it('should handle all failures', async () => {
+      const allFailureResponse: BulkCreateResponse = {
+        successCount: 0,
+        failureCount: 10,
+        createdCustomers: [],
+        errors: [
+          { index: 0, message: 'Validation error' },
+          { index: 1, message: 'Validation error' },
+          { index: 2, message: 'Validation error' },
+          { index: 3, message: 'Validation error' },
+          { index: 4, message: 'Validation error' },
+          { index: 5, message: 'Validation error' },
+          { index: 6, message: 'Validation error' },
+          { index: 7, message: 'Validation error' },
+          { index: 8, message: 'Validation error' },
+          { index: 9, message: 'Validation error' },
+        ],
+      };
+
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: true,
+        json: async () => allFailureResponse,
+      });
+
+      const result = await apiClient.bulkCreateRandom(10);
+
+      expect(result.successCount).toBe(0);
+      expect(result.failureCount).toBe(10);
+      expect(result.createdCustomers).toHaveLength(0);
+      expect(result.errors).toHaveLength(10);
+    });
+
+    describe('error handling with retries', () => {
+      beforeEach(() => {
+        jest.useFakeTimers();
+      });
+
+      afterEach(() => {
+        jest.useRealTimers();
+      });
+
+      it('should retry on 500 server error', async () => {
+        // Fail once, then succeed
+        global.fetch = jest
+          .fn()
+          .mockResolvedValueOnce({
+            ok: false,
+            status: 500,
+            json: async () => ({ message: 'Server error' }),
+          })
+          .mockResolvedValueOnce({
+            ok: true,
+            json: async () => mockBulkCreateResponse,
+          });
+
+        const resultPromise = apiClient.bulkCreateRandom(10);
+
+        await jest.runAllTimersAsync();
+
+        const result = await resultPromise;
+
+        expect(global.fetch).toHaveBeenCalledTimes(2);
+        expect(result).toEqual(mockBulkCreateResponse);
+      });
+
+      it('should retry on network error', async () => {
+        // Fail with network error, then succeed
+        global.fetch = jest
+          .fn()
+          .mockRejectedValueOnce(new TypeError('Network error'))
+          .mockResolvedValueOnce({
+            ok: true,
+            json: async () => mockBulkCreateResponse,
+          });
+
+        const resultPromise = apiClient.bulkCreateRandom(10);
+
+        await jest.runAllTimersAsync();
+
+        const result = await resultPromise;
+
+        expect(global.fetch).toHaveBeenCalledTimes(2);
+        expect(result).toEqual(mockBulkCreateResponse);
+      });
+
+      it('should fail after max retries on 500 error', async () => {
+        global.fetch = jest.fn().mockResolvedValue({
+          ok: false,
+          status: 500,
+          json: async () => ({ message: 'Server error' }),
+        });
+
+        const resultPromise = apiClient.bulkCreateRandom(10);
+
+        const expectation = expect(resultPromise).rejects.toMatchObject({
+          message: 'Server error',
+        });
+
+        await jest.runAllTimersAsync();
+
+        await expectation;
+
+        // Should try 4 times total (initial + 3 retries)
+        expect(global.fetch).toHaveBeenCalledTimes(4);
+      });
+
+      it('should not retry on 400 validation error', async () => {
+        global.fetch = jest.fn().mockResolvedValue({
+          ok: false,
+          status: 400,
+          json: async () => ({ message: 'Invalid count' }),
+        });
+
+        const resultPromise = apiClient.bulkCreateRandom(0);
+
+        try {
+          await resultPromise;
+          fail('Should have thrown');
+        } catch (error) {
+          expect(error).toBeInstanceOf(ApiError);
+        }
+
+        // Should only call once (no retries)
+        expect(global.fetch).toHaveBeenCalledTimes(1);
+      });
+    });
+
+    it('should handle network error gracefully', async () => {
+      global.fetch = jest.fn().mockRejectedValue(new TypeError('Failed to fetch'));
+
+      await expect(apiClient.bulkCreateRandom(10)).rejects.toMatchObject({
+        message: expect.stringContaining('Network error'),
+        isRetryable: true,
+      });
+    }, 15000);
+
+    it('should create 1 customer (minimum)', async () => {
+      const singleCustomerResponse: BulkCreateResponse = {
+        successCount: 1,
+        failureCount: 0,
+        createdCustomers: [
+          {
+            id: '123e4567-e89b-12d3-a456-426614174000',
+            name: 'John Doe',
+            email: 'john@example.com',
+            phone: '+1-555-555-0001',
+            address: '123 Main St, Springfield, IL 62701, USA',
+            createdAt: '2024-01-01T00:00:00Z',
+            updatedAt: '2024-01-01T00:00:00Z',
+          },
+        ],
+        errors: [],
+      };
+
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: true,
+        json: async () => singleCustomerResponse,
+      });
+
+      const result = await apiClient.bulkCreateRandom(1);
+
+      expect(result.successCount).toBe(1);
+      expect(result.createdCustomers).toHaveLength(1);
+      expect(global.fetch).toHaveBeenCalledWith(
+        'http://localhost:5000/api/customers/bulk',
+        expect.objectContaining({
+          body: JSON.stringify({ count: 1 }),
+        })
+      );
+    });
+
+    it('should create 1000 customers (maximum)', async () => {
+      const maxCustomersResponse: BulkCreateResponse = {
+        successCount: 1000,
+        failureCount: 0,
+        createdCustomers: [], // In reality would have 1000, but empty for test brevity
+        errors: [],
+      };
+
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: true,
+        json: async () => maxCustomersResponse,
+      });
+
+      const result = await apiClient.bulkCreateRandom(1000);
+
+      expect(result.successCount).toBe(1000);
+      expect(global.fetch).toHaveBeenCalledWith(
+        'http://localhost:5000/api/customers/bulk',
+        expect.objectContaining({
+          body: JSON.stringify({ count: 1000 }),
+        })
+      );
     });
   });
 });

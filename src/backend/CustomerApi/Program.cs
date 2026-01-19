@@ -1,5 +1,6 @@
 using CustomerApi.Data;
 using CustomerApi.Repositories;
+using CustomerApi.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi.Models;
 using System.Reflection;
@@ -17,6 +18,9 @@ builder.Services.AddAutoMapper(typeof(Program).Assembly);
 
 // Add Repositories
 builder.Services.AddScoped<ICustomerRepository, CustomerRepository>();
+
+// Add Services
+builder.Services.AddScoped<IRandomCustomerGenerator, RandomCustomerGenerator>();
 
 // Add Health Checks
 builder.Services.AddHealthChecks()
