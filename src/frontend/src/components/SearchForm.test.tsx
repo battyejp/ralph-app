@@ -34,8 +34,8 @@ describe('SearchForm', () => {
     it('should render title and description', () => {
       render(<SearchForm onSearch={mockOnSearch} />);
 
-      expect(screen.getByText('Customer Search')).toBeInTheDocument();
-      expect(screen.getByText(/search for customers by name, email, or phone number/i)).toBeInTheDocument();
+      expect(screen.getByText('Search Customers')).toBeInTheDocument();
+      expect(screen.getByText(/find customers by name, email, or phone number/i)).toBeInTheDocument();
     });
   });
 
