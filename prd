@@ -1,0 +1,182 @@
+# PRD: Customer Editing
+
+## Introduction
+
+Enable users to edit existing customer information through a dedicated edit dialog. Currently, users can only view customer details and create new customers, but cannot modify existing customer records. This feature will add an Edit button to the customer details dialog that opens a separate modal for editing all customer fields (Name, Email, Phone, Address).
+
+## Goals
+
+- Allow users to edit all customer fields (Name, Email, Phone, Address)
+- Provide a seamless editing experience through a dedicated dialog
+- Validate input and prevent duplicate email addresses
+- Maintain data integrity with proper error handling
+- Refresh the customer list after successful edits
+
+## User Stories
+
+### US-001: Add Edit button to Customer Details Dialog
+**Description:** As a user, I want to see an Edit button in the customer details dialog so I can quickly access the editing interface.
+
+**Acceptance Criteria:**
+- [ ] Edit button appears in the Customer Details Dialog header or footer
+- [ ] Button is clearly labeled as "Edit" or "Edit Customer"
+- [ ] Clicking the button opens the Edit Customer Dialog
+- [ ] Code builds successfully
+- [ ] All Tests pass with code coverage greater than 80%
+- [ ] Verify in browser using dev-browser skill
+
+### US-002: Create Edit Customer Dialog component
+**Description:** As a developer, I need a reusable Edit Customer Dialog component to handle customer editing functionality.
+
+**Acceptance Criteria:**
+- [ ] Create `EditCustomerDialog.tsx` component
+- [ ] Dialog accepts customer data as prop
+- [ ] Dialog has proper open/close state management
+- [ ] Reuses existing `CustomerForm` component or creates edit-specific form
+- [ ] Dialog title shows "Edit Customer" or similar
+- [ ] Code builds successfully
+- [ ] All Tests pass with code coverage greater than 80%
+- [ ] Verify in browser using dev-browser skill
+
+### US-003: Pre-populate form with existing customer data
+**Description:** As a user, I want to see the current customer information pre-filled in the edit form so I can easily modify specific fields.
+
+**Acceptance Criteria:**
+- [ ] All fields (Name, Email, Phone, Address) are pre-populated with current values
+- [ ] Empty optional fields (Phone, Address) show as empty, not undefined/null
+- [ ] Pre-populated data matches exactly what's shown in details dialog
+- [ ] Code builds successfully
+- [ ] All Tests pass with code coverage greater than 80%
+- [ ] Verify in browser using dev-browser skill
+
+### US-004: Validate edited customer data
+**Description:** As a user, I want the form to validate my input so I don't submit invalid data.
+
+**Acceptance Criteria:**
+- [ ] Name is required and cannot be empty
+- [ ] Email is required and must be valid email format
+- [ ] Phone validation follows existing phone format rules (if any)
+- [ ] Address has max length validation (500 characters)
+- [ ] Validation errors display clearly next to each field
+- [ ] Submit button is disabled when validation fails
+- [ ] Code builds successfully
+- [ ] All Tests pass with code coverage greater than 80%
+- [ ] Verify in browser using dev-browser skill
+
+### US-005: Check for duplicate email addresses
+**Description:** As a user, I want to be prevented from changing a customer's email to one that already exists so data integrity is maintained.
+
+**Acceptance Criteria:**
+- [ ] When email is changed, system checks if new email already exists
+- [ ] If duplicate detected, show clear error message
+- [ ] Allow saving if email hasn't changed from original (same customer)
+- [ ] Error message specifies that email is already in use
+- [ ] Code builds successfully
+- [ ] All Tests pass with code coverage greater than 80%
+- [ ] Verify in browser using dev-browser skill
+
+### US-006: Save edited customer data
+**Description:** As a user, I want to save my changes to the customer record so the updated information is persisted.
+
+**Acceptance Criteria:**
+- [ ] Save/Submit button triggers PUT request to `/api/customers/{id}`
+- [ ] Request includes all updated customer fields
+- [ ] Loading state shown during save operation
+- [ ] Save button disabled during submission
+- [ ] Code builds successfully
+- [ ] All Tests pass with code coverage greater than 80%
+
+### US-007: Handle save success
+**Description:** As a user, I want confirmation when my changes are saved successfully and to see the updated data.
+
+**Acceptance Criteria:**
+- [ ] Success toast notification shows "Customer updated successfully" or similar
+- [ ] Edit dialog closes automatically
+- [ ] Customer Details dialog closes (or refreshes to show new data)
+- [ ] Customer list table refreshes to show updated information
+- [ ] Code builds successfully
+- [ ] All Tests pass with code coverage greater than 80%
+- [ ] Verify in browser using dev-browser skill
+
+### US-008: Handle save errors
+**Description:** As a user, I want clear error messages when saving fails so I know what went wrong and can retry.
+
+**Acceptance Criteria:**
+- [ ] Network errors show "Failed to update customer" message
+- [ ] Validation errors from API are displayed on relevant fields
+- [ ] 404 errors show "Customer not found" message
+- [ ] User can retry after error without losing form data
+- [ ] Edit dialog remains open on error
+- [ ] Code builds successfully
+- [ ] All Tests pass with code coverage greater than 80%
+- [ ] Verify in browser using dev-browser skill
+
+### US-009: Add Cancel functionality
+**Description:** As a user, I want to cancel editing without saving changes so I don't accidentally modify customer data.
+
+**Acceptance Criteria:**
+- [ ] Cancel button present in edit dialog
+- [ ] Clicking Cancel closes the edit dialog
+- [ ] No API call made when canceling
+- [ ] Form changes are discarded on cancel
+- [ ] Returns to Customer Details dialog (still open)
+- [ ] Code builds successfully
+- [ ] All Tests pass with code coverage greater than 80%
+- [ ] Verify in browser using dev-browser skill
+
+## Functional Requirements
+
+- FR-1: Add "Edit" button to Customer Details Dialog ([CustomerDetailsDialog.tsx](src/frontend/src/components/CustomerDetailsDialog.tsx))
+- FR-2: Create new EditCustomerDialog component that accepts customer data as props
+- FR-3: Pre-populate all form fields (Name, Email, Phone, Address) with current customer data
+- FR-4: Validate Name (required, max 100 chars) and Email (required, valid format)
+- FR-5: Validate Phone (optional, valid phone format, max 20 chars) and Address (optional, max 500 chars)
+- FR-6: Check for duplicate email addresses before allowing save (allow if unchanged)
+- FR-7: Submit PUT request to `/api/customers/{id}` with updated [UpdateCustomerDto](src/backend/CustomerApi/DTOs/UpdateCustomerDto.cs)
+- FR-8: Show loading indicator during save operation
+- FR-9: Display success toast and close dialogs on successful save
+- FR-10: Refresh customer list table after successful edit
+- FR-11: Display error messages for validation failures, network errors, and API errors
+- FR-12: Provide Cancel button that discards changes and closes edit dialog
+
+## Non-Goals
+
+- No inline editing in the customer table (future enhancement)
+- No edit history or audit trail (UpdatedAt and UpdatedBy exist in model but not tracked in UI)
+- No confirmation dialog before saving (validation is sufficient)
+- No partial field updates (always update all fields)
+- No optimistic UI updates (wait for server confirmation)
+- No undo functionality after save
+- No keyboard shortcuts for opening edit dialog
+
+## Design Considerations
+
+- **Reuse Components:** Evaluate whether [CustomerForm.tsx](src/frontend/src/components/CustomerForm.tsx) can be adapted for editing or if a separate form component is needed
+- **UI Pattern:** Follow the existing pattern used by [CreateCustomerDialog.tsx](src/frontend/src/components/CreateCustomerDialog.tsx) for consistency
+- **Dialog Stacking:** Ensure proper z-index management when Edit dialog opens over Details dialog
+- **Responsive Design:** Dialog should be responsive and work on mobile devices
+- **Accessibility:** Ensure proper focus management when opening/closing dialogs
+
+## Technical Considerations
+
+- **Backend API:** The PUT endpoint at `/api/customers/{id}` already exists ([CustomersController.cs](src/backend/CustomerApi/Controllers/CustomersController.cs#L159))
+- **DTO:** [UpdateCustomerDto](src/backend/CustomerApi/DTOs/UpdateCustomerDto.cs) already defines the required structure
+- **Duplicate Email Check:** Need to call GET `/api/customers?email={email}` before PUT to check for duplicates
+- **State Management:** Pass `onCustomerUpdated` callback to trigger list refresh
+- **API Client:** Add `updateCustomer` method to [customerApi.ts](src/frontend/src/lib/api/customerApi.ts) if not already present
+- **Testing:** Create `EditCustomerDialog.test.tsx` with comprehensive test coverage
+
+## Success Metrics
+
+- Users can edit any customer field in under 3 clicks (View Details → Edit → Save)
+- Form validation catches 100% of invalid inputs before submission
+- Duplicate email detection prevents data integrity issues
+- Zero data loss on edit failures (form state preserved)
+- Test coverage remains above 80% for all new components
+
+## Open Questions
+
+- Should there be a "discard changes" confirmation if user clicks Cancel with unsaved changes?
+- Should the email field be editable, or should it be read-only to prevent identity confusion?
+- Do we need to show a diff/comparison of what changed before saving?
+- Should successful edit keep the Details dialog open to show updated data, or close both dialogs?

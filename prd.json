@@ -1,108 +1,193 @@
 {
-  "project": "Customer Search Application",
-  "branchName": "ralph/bulk-random-customer-creation",
-  "description": "Bulk Random Customer Creation - Allow users to generate and create 1-1000 random customers at once for testing and demo purposes using a performant bulk API endpoint",
-  "userStories": [
-    {
-      "id": "US-001",
-      "title": "Random Customer Data Generator Service",
-      "description": "As a developer, I need a service that generates realistic random customer data so that the bulk endpoint can create varied test data.",
-      "acceptanceCriteria": [
-        "IRandomCustomerGenerator service interface created in Services folder",
-        "RandomCustomerGenerator implementation generates realistic random names (first + last name combinations from predefined lists)",
-        "Generates valid random email addresses based on generated name with random domain",
-        "Generates random phone numbers in valid format (e.g., +1-XXX-XXX-XXXX)",
-        "Generates random addresses with street, city, state/region, postal code, and country",
-        "GenerateCustomers(int count) method returns list of CreateCustomerDto objects",
-        "All generated emails are unique within a batch (append index or random suffix if needed)",
-        "Service is registered as scoped service in DI container in Program.cs",
-        "Code builds successfully",
-        "All tests pass with code coverage greater than 80%"
-      ],
-      "priority": 1,
-      "passes": true,
-      "notes": ""
-    },
-    {
-      "id": "US-002",
-      "title": "Bulk Create Customers API Endpoint",
-      "description": "As a developer, I need a bulk create endpoint so that the frontend can create many customers in a single API call.",
-      "acceptanceCriteria": [
-        "POST /api/customers/bulk endpoint added to CustomersController",
-        "Endpoint accepts a BulkCreateRequestDto with 'count' property (int)",
-        "Endpoint uses IRandomCustomerGenerator to generate customer data",
-        "Returns 400 Bad Request if count exceeds 1000 or is less than 1",
-        "BulkCreateResponseDto includes: successCount (int), failureCount (int), createdCustomers (array of CustomerResponseDto), errors (array of BulkCreateError with index and message)",
-        "Successfully created customers are committed even if some fail validation",
-        "Uses Entity Framework AddRange() for batch insert performance",
-        "Endpoint documented in Swagger with appropriate attributes",
-        "Code builds successfully",
-        "All tests pass with code coverage greater than 80%"
-      ],
-      "priority": 2,
-      "passes": true,
-      "notes": ""
-    },
-    {
-      "id": "US-003",
-      "title": "API Client Bulk Create Method",
-      "description": "As a frontend developer, I need an API client method to call the bulk create endpoint so that UI components can trigger bulk creation.",
-      "acceptanceCriteria": [
-        "BulkCreateResponse type defined in lib/api/types.ts with successCount, failureCount, createdCustomers, and errors",
-        "BulkCreateError type defined with index (number) and message (string)",
-        "customerApi.bulkCreateRandom(count: number) method added to CustomerApiClient",
-        "Method calls POST /api/customers/bulk with { count } body",
-        "Method has extended timeout (30 seconds) for large batches",
-        "Returns typed BulkCreateResponse on success",
-        "Handles API errors appropriately with ApiError class",
-        "Code builds successfully",
-        "All tests pass with code coverage greater than 80%"
-      ],
-      "priority": 3,
-      "passes": true,
-      "notes": ""
-    },
-    {
-      "id": "US-004",
-      "title": "Bulk Create Customer UI Dialog",
-      "description": "As a user, I want a UI control to specify how many random customers to create so that I can quickly populate the database for testing.",
-      "acceptanceCriteria": [
-        "GenerateCustomersDialog component created in src/components/GenerateCustomersDialog.tsx",
-        "Dialog uses existing shadcn/ui Dialog, Input, Button, and Label components",
-        "Dialog contains number input for customer count with min=1 and max=1000",
-        "Input validates range and shows error message for invalid values (empty, <1, >1000, non-integer)",
-        "Generate button is disabled when input is invalid or while loading",
-        "Dialog has Cancel button to close without action",
-        "Dialog accepts onSuccess callback prop to notify parent of completion",
-        "Code builds successfully",
-        "All tests pass with code coverage greater than 80%",
-        "Verify in browser using dev-browser skill"
-      ],
-      "priority": 4,
-      "passes": true,
-      "notes": ""
-    },
-    {
-      "id": "US-005",
-      "title": "Integrate Bulk Create Dialog into Customer List Page",
-      "description": "As a user, I want to access the bulk create feature from the customer list page so that I can quickly generate test data.",
-      "acceptanceCriteria": [
-        "Generate Random Customers button added to customer list page header/actions area",
-        "Button uses outline variant to differentiate from primary actions",
-        "Clicking button opens the GenerateCustomersDialog",
-        "Loading state shown in dialog while bulk creation is in progress with 'Creating X customers...' message",
-        "Success toast shows count of successfully created customers (e.g., 'Successfully created 100 customers')",
-        "If partial failure, toast shows both success and failure counts (e.g., 'Created 95 customers. 5 failed.')",
-        "Error toast shown if entire operation fails",
-        "Customer list refreshes automatically after successful creation",
-        "Dialog closes automatically on completion (success or partial success)",
-        "Code builds successfully",
-        "All tests pass with code coverage greater than 80%",
-        "Verify in browser using dev-browser skill"
-      ],
-      "priority": 5,
-      "passes": true,
-      "notes": ""
-    }
-  ]
+    "project": "CustomerApp",
+    "branchName": "ralph/customer-editing",
+    "description": "Customer Editing - Enable users to edit existing customer information through a dedicated edit dialog",
+    "userStories": [
+        {
+            "id": "US-001",
+            "title": "Add updateCustomer method to API client",
+            "description": "As a developer, I need a client method to call the update customer endpoint.",
+            "acceptanceCriteria": [
+                "Add updateCustomer(id: string, data: UpdateCustomerDto) method to customerApi.ts",
+                "Method sends PUT request to /api/customers/{id}",
+                "Returns Promise<Customer> on success",
+                "Throws ApiError on failure",
+                "Code builds successfully",
+                "All Tests pass with code coverage greater than 80%"
+            ],
+            "priority": 1,
+            "passes": false,
+            "notes": ""
+        },
+        {
+            "id": "US-002",
+            "title": "Create EditCustomerDialog component",
+            "description": "As a developer, I need a reusable Edit Customer Dialog component.",
+            "acceptanceCriteria": [
+                "Create EditCustomerDialog.tsx component in components folder",
+                "Dialog accepts customer prop and open/onOpenChange state props",
+                "Dialog title shows 'Edit Customer'",
+                "Dialog has proper TypeScript types for all props",
+                "Code builds successfully",
+                "All Tests pass with code coverage greater than 80%"
+            ],
+            "priority": 2,
+            "passes": false,
+            "notes": ""
+        },
+        {
+            "id": "US-003",
+            "title": "Add form fields with pre-populated data to EditCustomerDialog",
+            "description": "As a user, I want to see current customer information pre-filled in the edit form.",
+            "acceptanceCriteria": [
+                "Form has Name, Email, Phone, and Address input fields",
+                "All fields pre-populate with current customer values on dialog open",
+                "Empty optional fields (Phone, Address) show as empty strings",
+                "Form uses controlled components with useState",
+                "Code builds successfully",
+                "All Tests pass with code coverage greater than 80%",
+                "Verify in browser using dev-browser skill"
+            ],
+            "priority": 3,
+            "passes": false,
+            "notes": ""
+        },
+        {
+            "id": "US-004",
+            "title": "Add validation to edit form",
+            "description": "As a user, I want the form to validate my input before submission.",
+            "acceptanceCriteria": [
+                "Name is required and cannot be empty (max 100 characters)",
+                "Email is required and must be valid email format",
+                "Phone validates format if provided (max 20 characters)",
+                "Address has max 500 character limit",
+                "Validation errors display next to each field",
+                "Submit button disabled when validation fails",
+                "Code builds successfully",
+                "All Tests pass with code coverage greater than 80%",
+                "Verify in browser using dev-browser skill"
+            ],
+            "priority": 4,
+            "passes": false,
+            "notes": ""
+        },
+        {
+            "id": "US-005",
+            "title": "Add duplicate email check",
+            "description": "As a user, I want to be prevented from using an email that already exists.",
+            "acceptanceCriteria": [
+                "When email is changed, check if new email exists via GET /api/customers?email={email}",
+                "Skip check if email unchanged from original customer email",
+                "Show error message 'Email address is already in use' if duplicate found",
+                "Prevent form submission when duplicate detected",
+                "Code builds successfully",
+                "All Tests pass with code coverage greater than 80%",
+                "Verify in browser using dev-browser skill"
+            ],
+            "priority": 5,
+            "passes": false,
+            "notes": ""
+        },
+        {
+            "id": "US-006",
+            "title": "Implement save functionality",
+            "description": "As a user, I want to save my changes to the customer record.",
+            "acceptanceCriteria": [
+                "Save button triggers PUT request using customerApi.updateCustomer",
+                "Request includes all form fields (Name, Email, Phone, Address)",
+                "Loading spinner displays during save operation",
+                "Save button disabled during submission",
+                "Code builds successfully",
+                "All Tests pass with code coverage greater than 80%"
+            ],
+            "priority": 6,
+            "passes": false,
+            "notes": ""
+        },
+        {
+            "id": "US-007",
+            "title": "Handle save success",
+            "description": "As a user, I want confirmation when changes are saved successfully.",
+            "acceptanceCriteria": [
+                "Success toast shows 'Customer updated successfully' message",
+                "Edit dialog closes automatically after successful save",
+                "onSuccess callback called to trigger parent refresh",
+                "Code builds successfully",
+                "All Tests pass with code coverage greater than 80%",
+                "Verify in browser using dev-browser skill"
+            ],
+            "priority": 7,
+            "passes": false,
+            "notes": ""
+        },
+        {
+            "id": "US-008",
+            "title": "Handle save errors",
+            "description": "As a user, I want clear error messages when saving fails.",
+            "acceptanceCriteria": [
+                "Network errors show 'Failed to update customer' message",
+                "404 errors show 'Customer not found' message",
+                "API validation errors display on relevant form fields",
+                "Form data preserved on error for retry",
+                "Dialog remains open on error",
+                "Code builds successfully",
+                "All Tests pass with code coverage greater than 80%",
+                "Verify in browser using dev-browser skill"
+            ],
+            "priority": 8,
+            "passes": false,
+            "notes": ""
+        },
+        {
+            "id": "US-009",
+            "title": "Add Cancel functionality",
+            "description": "As a user, I want to cancel editing without saving changes.",
+            "acceptanceCriteria": [
+                "Cancel button present in dialog footer",
+                "Clicking Cancel closes the dialog immediately",
+                "No API call made when canceling",
+                "Form changes discarded on cancel",
+                "Code builds successfully",
+                "All Tests pass with code coverage greater than 80%",
+                "Verify in browser using dev-browser skill"
+            ],
+            "priority": 9,
+            "passes": false,
+            "notes": ""
+        },
+        {
+            "id": "US-010",
+            "title": "Add Edit button to Customer Details Dialog",
+            "description": "As a user, I want to access the edit dialog from customer details.",
+            "acceptanceCriteria": [
+                "Edit button added to CustomerDetailsDialog component footer or header",
+                "Button labeled 'Edit' or 'Edit Customer'",
+                "Clicking button opens EditCustomerDialog with current customer data",
+                "EditCustomerDialog receives customer prop from details dialog",
+                "After edit success, CustomerDetailsDialog refreshes or closes",
+                "Code builds successfully",
+                "All Tests pass with code coverage greater than 80%",
+                "Verify in browser using dev-browser skill"
+            ],
+            "priority": 10,
+            "passes": false,
+            "notes": ""
+        },
+        {
+            "id": "US-011",
+            "title": "Refresh customer list after edit",
+            "description": "As a user, I want to see updated customer data in the list after editing.",
+            "acceptanceCriteria": [
+                "After successful edit, customer list table refreshes automatically",
+                "Updated data visible in table without manual page refresh",
+                "Use onCustomerUpdated or similar callback to trigger parent refresh",
+                "Code builds successfully",
+                "All Tests pass with code coverage greater than 80%",
+                "Verify in browser using dev-browser skill"
+            ],
+            "priority": 11,
+            "passes": false,
+            "notes": ""
+        }
+    ]
 }
