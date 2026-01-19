@@ -308,30 +308,40 @@ function HomeContent() {
   };
 
   return (
-    <main className="flex min-h-screen flex-col items-center p-6 md:p-12 lg:p-24">
-      <div className="w-full max-w-6xl space-y-8">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
-            <h1 className="text-3xl font-bold mb-2">Customer Search</h1>
-            <p className="text-muted-foreground">
-              Search for customers by name, email, or phone number
-            </p>
-          </div>
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={() => setIsGenerateDialogOpen(true)}>
-              Generate Random Customers
-            </Button>
-            <Button onClick={() => setIsCreateDialogOpen(true)}>
-              Create Customer
-            </Button>
+    <main className="flex min-h-screen flex-col bg-gradient-to-br from-background via-background to-secondary/30">
+      {/* Modern Header with Gradient */}
+      <div className="w-full gradient-primary shadow-lg">
+        <div className="max-w-6xl mx-auto px-6 md:px-12 lg:px-24 py-8 md:py-12">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div className="text-white">
+              <h1 className="text-4xl md:text-5xl font-bold mb-2 tracking-tight">Customer Management</h1>
+              <p className="text-white/90 text-lg">
+                Search, create, and manage your customers with ease
+              </p>
+            </div>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => setIsGenerateDialogOpen(true)} className="bg-white/10 hover:bg-white/20 text-white border-white/30 backdrop-blur-sm">
+                Generate Random Customers
+              </Button>
+              <Button onClick={() => setIsCreateDialogOpen(true)} className="bg-white text-primary hover:bg-white/90 font-semibold">
+                Create Customer
+              </Button>
+            </div>
           </div>
         </div>
+      </div>
 
-        <SearchForm
-          onSearch={handleSearch}
-          isLoading={isLoading}
-          onValidationError={handleValidationError}
-        />
+      {/* Main Content */}
+      <div className="w-full max-w-6xl mx-auto px-6 md:px-12 lg:px-24 py-8 space-y-8">
+
+        {/* Search Section */}
+        <div className="space-y-4">
+          <SearchForm
+            onSearch={handleSearch}
+            isLoading={isLoading}
+            onValidationError={handleValidationError}
+          />
+        </div>
 
         {hasSearched && (
           <>
