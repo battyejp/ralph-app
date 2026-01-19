@@ -76,7 +76,7 @@ export function SearchForm({ onSearch, isLoading = false, onValidationError }: S
   };
 
   return (
-    <div className="w-full max-w-4xl space-y-4 p-6 bg-card rounded-lg border shadow-sm">
+    <div className="w-full max-w-4xl space-y-4 p-6 bg-card rounded-lg border shadow-md">
       <div className="space-y-2">
         <h2 className="text-2xl font-bold">Customer Search</h2>
         <p className="text-sm text-muted-foreground">

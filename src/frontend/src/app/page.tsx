@@ -308,7 +308,7 @@ function HomeContent() {
   };
 
   return (
-    <main className="flex min-h-screen flex-col items-center p-6 md:p-12 lg:p-24">
+    <main className="flex min-h-screen flex-col items-center p-6 md:p-12 lg:p-24 bg-gradient-to-br from-background to-muted/20">
       <div className="w-full max-w-6xl space-y-8">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
