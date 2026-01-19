@@ -248,7 +248,7 @@ public class CustomersController : ControllerBase
                 var dto = customerDtos[i];
 
                 // Check if email already exists
-                if (await _repository.EmailExistsAsync(dto.Email))
+                if (await _repository.EmailExistsAsync(dto.Email)) //TODO do this check in bulk for performance so doesn't require N DB calls
                 {
                     response.Errors.Add(new BulkCreateError
                     {
