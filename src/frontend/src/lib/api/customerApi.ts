@@ -1,4 +1,4 @@
-import type { Customer, PaginatedResponse, CustomerSearchParams, CreateCustomerData, BulkCreateResponse } from './types';
+import type { Customer, PaginatedResponse, CustomerSearchParams, CreateCustomerData, BulkCreateResponse, UpdateCustomerDto } from './types';
 
 /**
  * Custom error class for API-related errors
@@ -255,6 +255,87 @@ class CustomerApiClient {
   }
 
   /**
+   * Performs a PUT request with error handling and retry mechanism
+   */
+  private async putWithErrorHandling<T>(
+    url: string,
+    data: unknown,
+    retryCount: number = 0
+  ): Promise<T> {
+    try {
+      const response = await fetch(url, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data),
+      });
+
+      if (!response.ok) {
+        // Try to parse error response
+        let errorMessage: string;
+        let errors: Record<string, string[]> | undefined;
+
+        try {
+          const errorData = await response.json();
+          if (errorData.message) {
+            errorMessage = errorData.message;
+          } else {
+            errorMessage = getUserFriendlyErrorMessage(response.status);
+          }
+          if (errorData.errors) {
+            errors = errorData.errors;
+          }
+        } catch {
+          // If JSON parsing fails, use user-friendly error message
+          errorMessage = getUserFriendlyErrorMessage(response.status);
+        }
+
+        const isRetryable = isRetryableError(response.status);
+
+        // Retry if error is retryable and we haven't exceeded max retries
+        if (isRetryable && retryCount < this.maxRetries) {
+          const delayMs = this.retryDelay * Math.pow(2, retryCount); // Exponential backoff
+          await this.delay(delayMs);
+          return this.putWithErrorHandling<T>(url, data, retryCount + 1);
+        }
+
+        throw new ApiError(errorMessage, response.status, errors, isRetryable);
+      }
+
+      return await response.json();
+    } catch (error) {
+      // Network error or other fetch-related error
+      if (error instanceof ApiError) {
+        throw error;
+      }
+
+      if (error instanceof TypeError) {
+        // Network errors are retryable
+        if (retryCount < this.maxRetries) {
+          const delayMs = this.retryDelay * Math.pow(2, retryCount);
+          await this.delay(delayMs);
+          return this.putWithErrorHandling<T>(url, data, retryCount + 1);
+        }
+
+        throw new ApiError(
+          'Network error: Unable to reach the API server. Please check your connection.',
+          undefined,
+          undefined,
+          true
+        );
+      }
+
+      throw new ApiError(
+        'An unexpected error occurred while communicating with the API.',
+        undefined,
+        undefined,
+        false
+      );
+    }
+  }
+
+  /**
    * Builds query string from search parameters
    */
   private buildQueryString(params: CustomerSearchParams): string {
@@ -313,6 +394,19 @@ class CustomerApiClient {
   async createCustomer(data: CreateCustomerData): Promise<Customer> {
     const url = `${this.baseUrl}/api/customers`;
     return this.postWithErrorHandling<Customer>(url, data);
+  }
+
+  /**
+   * Update an existing customer
+   * @param id - The customer ID to update
+   * @param data - The customer data to update
+   * @returns The updated customer object
+   * @throws ApiError with status 400 if validation fails (errors contain field-level messages)
+   * @throws ApiError with status 404 if customer not found
+   */
+  async updateCustomer(id: string, data: UpdateCustomerDto): Promise<Customer> {
+    const url = `${this.baseUrl}/api/customers/${id}`;
+    return this.putWithErrorHandling<Customer>(url, data);
   }
 
   /**

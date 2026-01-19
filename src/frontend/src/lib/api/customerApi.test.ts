@@ -1296,4 +1296,259 @@ describe('CustomerApiClient', () => {
       );
     });
   });
+
+  describe('updateCustomer', () => {
+    const customerId = '123e4567-e89b-12d3-a456-426614174000';
+    const updateData: CreateCustomerData = {
+      name: 'Jane Smith',
+      email: 'jane.smith@example.com',
+      phone: '555-9876',
+      address: '456 Oak Ave',
+    };
+
+    it('should update a customer successfully', async () => {
+      const mockUpdatedCustomer: Customer = {
+        id: customerId,
+        name: 'Jane Smith',
+        email: 'jane.smith@example.com',
+        phone: '555-9876',
+        address: '456 Oak Ave',
+        createdAt: '2024-01-01T00:00:00Z',
+        updatedAt: '2024-01-02T00:00:00Z',
+      };
+
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: true,
+        json: async () => mockUpdatedCustomer,
+      });
+
+      const result = await apiClient.updateCustomer(customerId, updateData);
+
+      expect(result).toEqual(mockUpdatedCustomer);
+      expect(global.fetch).toHaveBeenCalledWith(
+        `http://localhost:5000/api/customers/${customerId}`,
+        {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(updateData),
+        }
+      );
+    });
+
+    it('should handle validation errors (400)', async () => {
+      const validationErrors = {
+        Name: ['Name is required'],
+        Email: ['Invalid email format'],
+      };
+
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: false,
+        status: 400,
+        json: async () => ({
+          message: 'Validation failed',
+          errors: validationErrors,
+        }),
+      });
+
+      await expect(apiClient.updateCustomer(customerId, updateData)).rejects.toThrow(ApiError);
+      
+      try {
+        await apiClient.updateCustomer(customerId, updateData);
+      } catch (error) {
+        expect(error).toBeInstanceOf(ApiError);
+        if (error instanceof ApiError) {
+          expect(error.message).toBe('Validation failed');
+          expect(error.status).toBe(400);
+          expect(error.errors).toEqual(validationErrors);
+          expect(error.isRetryable).toBe(false);
+        }
+      }
+    });
+
+    it('should handle customer not found (404)', async () => {
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: false,
+        status: 404,
+        json: async () => ({
+          message: `Customer with ID ${customerId} not found.`,
+        }),
+      });
+
+      await expect(apiClient.updateCustomer(customerId, updateData)).rejects.toThrow(ApiError);
+      
+      try {
+        await apiClient.updateCustomer(customerId, updateData);
+      } catch (error) {
+        expect(error).toBeInstanceOf(ApiError);
+        if (error instanceof ApiError) {
+          expect(error.message).toBe(`Customer with ID ${customerId} not found.`);
+          expect(error.status).toBe(404);
+          expect(error.isRetryable).toBe(false);
+        }
+      }
+    });
+
+    it('should handle network errors with retry', async () => {
+      jest.useFakeTimers();
+
+      global.fetch = jest.fn()
+        .mockRejectedValueOnce(new TypeError('Network error'))
+        .mockRejectedValueOnce(new TypeError('Network error'))
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({
+            id: customerId,
+            ...updateData,
+            createdAt: '2024-01-01T00:00:00Z',
+            updatedAt: '2024-01-02T00:00:00Z',
+          }),
+        });
+
+      const promise = apiClient.updateCustomer(customerId, updateData);
+      
+      // Fast-forward through retry delays
+      await jest.runAllTimersAsync();
+      
+      const result = await promise;
+
+      expect(result.id).toBe(customerId);
+      expect(global.fetch).toHaveBeenCalledTimes(3);
+
+      jest.useRealTimers();
+    });
+
+    it('should throw ApiError after max retries on network error', async () => {
+      jest.useFakeTimers();
+
+      global.fetch = jest.fn().mockRejectedValue(new TypeError('Network error'));
+
+      const promise = apiClient.updateCustomer(customerId, updateData);
+      
+      const runTimers = jest.runAllTimersAsync();
+      
+      await expect(promise).rejects.toThrow(ApiError);
+      await expect(promise).rejects.toThrow(
+        'Network error: Unable to reach the API server. Please check your connection.'
+      );
+
+      await runTimers;
+
+      expect(global.fetch).toHaveBeenCalledTimes(4); // Initial + 3 retries
+
+      jest.useRealTimers();
+    });
+
+    it('should retry on 500 error', async () => {
+      jest.useFakeTimers();
+
+      global.fetch = jest.fn()
+        .mockResolvedValueOnce({
+          ok: false,
+          status: 500,
+          json: async () => ({}),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({
+            id: customerId,
+            ...updateData,
+            createdAt: '2024-01-01T00:00:00Z',
+            updatedAt: '2024-01-02T00:00:00Z',
+          }),
+        });
+
+      const promise = apiClient.updateCustomer(customerId, updateData);
+      
+      await jest.runAllTimersAsync();
+      
+      const result = await promise;
+
+      expect(result.id).toBe(customerId);
+      expect(global.fetch).toHaveBeenCalledTimes(2);
+
+      jest.useRealTimers();
+    });
+
+    it('should not retry on 400 error', async () => {
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: false,
+        status: 400,
+        json: async () => ({
+          message: 'Bad request',
+        }),
+      });
+
+      await expect(apiClient.updateCustomer(customerId, updateData)).rejects.toThrow('Bad request');
+      expect(global.fetch).toHaveBeenCalledTimes(1);
+    });
+
+    it('should not retry on 404 error', async () => {
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: false,
+        status: 404,
+        json: async () => ({
+          message: 'Customer not found',
+        }),
+      });
+
+      await expect(apiClient.updateCustomer(customerId, updateData)).rejects.toThrow('Customer not found');
+      expect(global.fetch).toHaveBeenCalledTimes(1);
+    });
+
+    it('should handle server error with user-friendly message', async () => {
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: false,
+        status: 500,
+        json: async () => ({}),
+      });
+
+      await expect(apiClient.updateCustomer(customerId, updateData)).rejects.toThrow(
+        'A server error occurred. Please try again later.'
+      );
+    }, 15000);
+
+    it('should update customer with optional fields as null', async () => {
+      const minimalUpdateData = {
+        name: 'John Minimal',
+        email: 'john@minimal.com',
+      };
+
+      const mockUpdatedCustomer: Customer = {
+        id: customerId,
+        name: 'John Minimal',
+        email: 'john@minimal.com',
+        phone: null,
+        address: null,
+        createdAt: '2024-01-01T00:00:00Z',
+        updatedAt: '2024-01-02T00:00:00Z',
+      };
+
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: true,
+        json: async () => mockUpdatedCustomer,
+      });
+
+      const result = await apiClient.updateCustomer(customerId, minimalUpdateData);
+
+      expect(result).toEqual(mockUpdatedCustomer);
+      expect(result.phone).toBeNull();
+      expect(result.address).toBeNull();
+    });
+
+    it('should handle JSON parsing error in error response', async () => {
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: false,
+        status: 500,
+        json: async () => {
+          throw new Error('Invalid JSON');
+        },
+      });
+
+      await expect(apiClient.updateCustomer(customerId, updateData)).rejects.toThrow(
+        'A server error occurred. Please try again later.'
+      );
+    }, 15000);
+  });
 });
